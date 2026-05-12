@@ -1,0 +1,296 @@
+const zlib = require("zlib");
+const crypto = require("./crypto");
+
+const BLOCK_PREFIX = {
+  PasswordConfigureClient: "pswcc",
+  Password: "pswd",
+  PlainData: "plda",
+  PublicKey: "pkhs",
+  PublicKeySymmetric: "phsk",
+};
+
+function parseBinaryConfig(buf) {
+  if (buf.length < 4) return null;
+  const prefix = buf.slice(0, 4).toString("ascii");
+
+  let dataOffset = 4;
+  let encrypted = false;
+
+  switch (prefix) {
+    case BLOCK_PREFIX.Password:
+    case BLOCK_PREFIX.PasswordConfigureClient:
+      encrypted = true;
+      break;
+    case BLOCK_PREFIX.PlainData:
+      break;
+    case BLOCK_PREFIX.PublicKey:
+      dataOffset = 4 + 20;
+      encrypted = true;
+      break;
+    case BLOCK_PREFIX.PublicKeySymmetric:
+      dataOffset = 4 + 20;
+      encrypted = true;
+      break;
+    default:
+      return parseXmlPlist(buf);
+  }
+
+  let inner = buf.slice(dataOffset);
+  try {
+    inner = zlib.gunzipSync(inner);
+  } catch (e) {
+    return null;
+  }
+
+  const xmlStart = findPlistStart(inner);
+  if (xmlStart === -1) return null;
+  return parseXmlPlist(inner.slice(xmlStart));
+}
+
+function findPlistStart(buf) {
+  const str = buf.toString("utf-8");
+  const idx = str.indexOf("<plist");
+  if (idx !== -1) return idx;
+  const idx2 = str.indexOf("<?xml");
+  return idx2;
+}
+
+class PlistParser {
+  constructor(str) {
+    this.str = str;
+    this.pos = 0;
+  }
+
+  readTo(c) {
+    while (this.pos < this.str.length && this.str[this.pos] !== c)
+      this.pos++;
+  }
+
+  readPast(c) {
+    this.readTo(c);
+    if (this.pos < this.str.length) this.pos++;
+  }
+
+  readOpenTag() {
+    const start = this.pos;
+    this.readPast(">");
+    const raw = this.str.slice(start, this.pos);
+    const selfClosing = raw.endsWith("/>") || raw.endsWith("/ >");
+    const m = raw.match(/^<\s*([a-zA-Z_-]+)/);
+    if (!m) return { tag: null, selfClosing: false };
+    return { tag: m[1].toLowerCase(), selfClosing, raw };
+  }
+
+  readTextContent(parentTag) {
+    const closeTag = "</" + parentTag + ">";
+    const closeTagLen = closeTag.length;
+    const start = this.pos;
+    while (this.pos < this.str.length) {
+      if (this.str[this.pos] === "<") {
+        const slice = this.str.slice(this.pos, this.pos + closeTagLen);
+        if (slice.toLowerCase() === closeTag.toLowerCase()) {
+          const text = this.str.slice(start, this.pos).trim();
+          this.pos += closeTagLen;
+          return text;
+        }
+      }
+      this.pos++;
+    }
+    const text = this.str.slice(start).trim();
+    return text;
+  }
+
+  skipToContentStart() {
+    this.readPast(">");
+  }
+
+  parseValue() {
+    while (this.pos < this.str.length) {
+      if (this.str[this.pos] !== "<") {
+        this.pos++;
+        continue;
+      }
+
+      if (
+        this.str[this.pos + 1] === "/" ||
+        this.str.slice(this.pos, this.pos + 6) === "</dict" ||
+        this.str.slice(this.pos, this.pos + 7) === "</array" ||
+        this.str.slice(this.pos, this.pos + 7) === "</plist"
+      ) {
+        return undefined;
+      }
+
+      const { tag, selfClosing } = this.readOpenTag();
+      if (!tag) {
+        this.pos++;
+        continue;
+      }
+
+      switch (tag) {
+        case "key": {
+          const key = this.readTextContent("key");
+          const v = this.parseValue();
+          if (v !== undefined) {
+            return { _kv: true, key, value: v };
+          }
+          return undefined;
+        }
+        case "dict": {
+          const d = {};
+          while (this.pos < this.str.length) {
+            const saved = this.pos;
+            if (
+              this.str[this.pos] === "<" &&
+              (this.str.slice(this.pos, this.pos + 6) === "</dict" ||
+                this.str.slice(this.pos, this.pos + 7) === "</dict ")
+            ) {
+              this.readPast(">");
+              break;
+            }
+            if (
+              this.str.slice(this.pos, this.pos + 2) === "</" &&
+              this.str.slice(this.pos, this.pos + 2) !== "<!"
+            ) {
+              this.readPast(">");
+              break;
+            }
+            const kv = this.parseValue();
+            if (kv && kv._kv) {
+              d[kv.key] = kv.value;
+            }
+            if (this.pos === saved) {
+              this.pos++;
+            }
+          }
+          return d;
+        }
+        case "array": {
+          const arr = [];
+          while (this.pos < this.str.length) {
+            const saved = this.pos;
+            if (
+              this.str[this.pos] === "<" &&
+              (this.str.slice(this.pos, this.pos + 7) === "</array" ||
+                this.str.slice(this.pos, this.pos + 8) === "</array ")
+            ) {
+              this.readPast(">");
+              break;
+            }
+            if (
+              this.str.slice(this.pos, this.pos + 2) === "</" &&
+              this.str.slice(this.pos, this.pos + 2) !== "<!" &&
+              this.str.slice(this.pos, this.pos + 7) !== "</array" &&
+              this.str.slice(this.pos, this.pos + 8) !== "</array "
+            ) {
+              break;
+            }
+            const v = this.parseValue();
+            if (v !== undefined) {
+              if (v._kv) {
+                arr.push(v.value);
+              } else {
+                arr.push(v);
+              }
+            }
+            if (this.pos === saved) {
+              this.pos++;
+            }
+          }
+          return arr;
+        }
+        case "string":
+          if (selfClosing) return "";
+          return this.readTextContent("string");
+        case "integer":
+          if (selfClosing) return 0;
+          return parseInt(this.readTextContent("integer"), 10);
+        case "real":
+          if (selfClosing) return 0.0;
+          return parseFloat(this.readTextContent("real"));
+        case "true":
+          if (!selfClosing) this.readTextContent("true");
+          return true;
+        case "false":
+          if (!selfClosing) this.readTextContent("false");
+          return false;
+        case "data": {
+          if (selfClosing) return Buffer.from("");
+          const val = this.readTextContent("data");
+          try {
+            return Buffer.from(val.replace(/\s/g, ""), "base64");
+          } catch (e) {
+            return Buffer.from("");
+          }
+        }
+        case "plist":
+          return this.parseValue();
+        case "?xml":
+        case "!doctype":
+          this.readPast(">");
+          break;
+        default:
+          if (!selfClosing) {
+            this.readTextContent(tag);
+          }
+          break;
+      }
+    }
+    return undefined;
+  }
+
+  readCloseTag() {
+    this.readPast(">");
+  }
+}
+
+function parseXmlPlist(buf) {
+  const str = buf.toString("utf-8");
+  const parser = new PlistParser(str);
+  const result = parser.parseValue();
+  if (result && result._kv && result.key === "plist") {
+    return result.value || {};
+  }
+  if (result && !result._kv && typeof result === "object" && !Array.isArray(result)) {
+    return result;
+  }
+  if (result && result._kv) {
+    const d = {};
+    d[result.key] = result.value;
+    return d;
+  }
+  return result || {};
+}
+
+function loadConfig(fileBuffer) {
+  const str = fileBuffer.toString("utf-8").trim();
+  if (str.startsWith("<?xml") || str.startsWith("<plist")) {
+    return { dict: parseXmlPlist(fileBuffer), format: "xml" };
+  }
+  const dict = parseBinaryConfig(fileBuffer);
+  if (dict) {
+    return { dict, format: "binary" };
+  }
+  return null;
+}
+
+function getString(dict, key, defaultValue) {
+  const v = dict[key];
+  if (typeof v === "string") return v;
+  if (v instanceof Buffer) return v.toString("utf-8");
+  return defaultValue;
+}
+
+function getBool(dict, key, defaultValue) {
+  const v = dict[key];
+  if (typeof v === "boolean") return v;
+  if (typeof v === "number") return v !== 0;
+  return defaultValue;
+}
+
+function getInt(dict, key, defaultValue) {
+  const v = dict[key];
+  if (typeof v === "number") return v;
+  return defaultValue;
+}
+
+module.exports = { loadConfig, parseXmlPlist, getString, getBool, getInt };

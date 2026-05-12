@@ -1,0 +1,42 @@
+/* (No Comment) */
+"Connect to an individually configured SEB Screen Proctoring service. Currently this can only be configured using SEB Server." = "Verbindung zu einem individuell konfigurierten SEB Screen Proctoring Service. Derzeit kann dies nur über SEB Server konfiguriert werden";
+
+/* (No Comment) */
+"Connect to SEB Server" = "Mit SEB Server verbinden";
+
+/* (No Comment) */
+"Enable Screen Proctoring" = "Screen Proctoring aktivieren";
+
+/* String for Title elements */
+"Enable SEB Server Support" = "Erlaube Benutzung von SEB Server";
+
+/* String for IASKPlaceholder elements */
+"Full URL" = "Vollständige URL";
+
+/* (No Comment) */
+"Indicate Health and Caching" = "Verbindungsstatus und Caching anzeigen";
+
+/* String for Titles arrays elements */
+"Load Start URL" = "Start-URL laden";
+
+/* (No Comment) */
+"Remote Proctoring" = "Remote Proctoring";
+
+/* (No Comment) */
+"Screen Proctoring" = "Bildschirm-Fernüberwachung";
+
+/* String for FooterText elements */
+"SEB either loads a web resource from Start URL or connects to an SEB Server" = "SEB lädt entweder eine Web-Ressource von der Start-URL oder verbindet sich mit einer SEB Server-Instanz";
+
+/* (No Comment) */
+"SEB Server Fallback" = "SEB Server-Fallback";
+
+/* (No Comment) */
+"Server Connection Settings" = "Server-Verbindungseinstellungen";
+
+/* (No Comment) */
+"Server URL" = "Server-URL";
+
+/* (No Comment) */
+"When SEB Server Fallback is enabled, the SEB client loads Start URL in a browser window if it cannot connect to the specified SEB Server." = "Wenn SEB Server-Fallback aktiviert ist, lädt der SEB-Client die Start-URL in einem Browserfenster, wenn er keine Verbindung zum angegebenen SEB Server herstellen kann.";
+

@@ -1,0 +1,25 @@
+<?xml version="1.0"?>
+
+<ruleset name="SEB Server custom rules"
+    xmlns="http://pmd.sourceforge.net/ruleset/2.0.0"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://pmd.sourceforge.net/ruleset/2.0.0 https://pmd.sourceforge.io/ruleset_2_0_0.xsd">
+
+    <description>
+        SEB Server custom rules
+    </description>
+
+    <exclude-pattern>.*/batis/mapper/*.java</exclude-pattern>
+    <exclude-pattern>.*/batis/model/*.java</exclude-pattern>
+    
+    <rule ref="category/java/errorprone.xml" >
+        <exclude name="AvoidDuplicateLiterals"/>
+        <exclude name="BeanMembersShouldSerialize"/>
+        <exclude name="AvoidFieldNameMatchingMethodName"/>
+        <exclude name="NullAssignment"/>
+        <exclude name="AvoidLiteralsInIfCondition"/>
+        <exclude name="InvalidSlf4jMessageFormat"/>
+        <exclude name="DataflowAnomalyAnalysis"/>
+    </rule>
+
+</ruleset>

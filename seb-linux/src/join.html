@@ -1,0 +1,332 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Safe Exam Browser - Join Exam</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    background: #0d1b2a;
+    color: #e0e0e0;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+    user-select: none;
+  }
+  .card {
+    background: #1b2838;
+    border-radius: 12px;
+    padding: 40px;
+    width: 100%;
+    max-width: 480px;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.4);
+    border: 1px solid #2a3a4e;
+  }
+  .logo {
+    text-align: center;
+    margin-bottom: 8px;
+    font-size: 22px;
+    font-weight: 700;
+    color: #4da6ff;
+    letter-spacing: 0.5px;
+  }
+  .subtitle {
+    text-align: center;
+    color: #8899aa;
+    font-size: 13px;
+    margin-bottom: 28px;
+  }
+  .field {
+    margin-bottom: 20px;
+  }
+  .field label {
+    display: block;
+    font-size: 12px;
+    font-weight: 600;
+    color: #8899aa;
+    margin-bottom: 6px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+  .field input {
+    width: 100%;
+    padding: 12px 14px;
+    background: #0d1b2a;
+    border: 1px solid #2a3a4e;
+    border-radius: 6px;
+    color: #e0e0e0;
+    font-size: 14px;
+    font-family: "SF Mono", "Fira Code", "Consolas", monospace;
+    outline: none;
+    transition: border-color 0.2s;
+  }
+  .field input:focus {
+    border-color: #4da6ff;
+    box-shadow: 0 0 0 2px rgba(77,166,255,0.15);
+  }
+  .field input::placeholder {
+    color: #445566;
+  }
+  .field input.normal-font {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  }
+  .field-info {
+    font-size: 11px;
+    color: #556677;
+    margin-top: 4px;
+  }
+  .btn {
+    width: 100%;
+    padding: 14px;
+    background: #4da6ff;
+    color: #0d1b2a;
+    border: none;
+    border-radius: 6px;
+    font-size: 15px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: background 0.2s, transform 0.1s;
+    margin-top: 8px;
+  }
+  .btn:hover { background: #66b3ff; }
+  .btn:active { transform: scale(0.98); }
+  .btn:disabled { background: #334455; color: #667788; cursor: not-allowed; }
+  .btn.secondary {
+    background: transparent;
+    color: #b8c7d9;
+    border: 1px solid #2a3a4e;
+    margin-top: 0;
+  }
+  .btn.secondary:hover { background: #223247; }
+  .error {
+    background: rgba(255,77,77,0.12);
+    border: 1px solid rgba(255,77,77,0.3);
+    color: #ff6b6b;
+    padding: 10px 14px;
+    border-radius: 6px;
+    font-size: 13px;
+    margin-bottom: 16px;
+    display: none;
+  }
+  .error.visible { display: block; }
+  .divider {
+    border: none;
+    border-top: 1px solid #2a3a4e;
+    margin: 24px 0;
+    position: relative;
+  }
+  .divider span {
+    position: absolute;
+    top: -10px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: #1b2838;
+    padding: 0 12px;
+    color: #556677;
+    font-size: 11px;
+    text-transform: uppercase;
+  }
+  .skip-hint {
+    text-align: center;
+    font-size: 12px;
+    color: #556677;
+    margin-top: 16px;
+  }
+  .skip-hint a {
+    color: #4da6ff;
+    text-decoration: none;
+  }
+  .skip-hint a:hover { text-decoration: underline; }
+  .button-row {
+    display: flex;
+    gap: 12px;
+    margin-top: 8px;
+  }
+  .button-row .btn {
+    margin-top: 0;
+  }
+</style>
+</head>
+<body>
+<div class="card">
+  <div class="logo">Safe Exam Browser</div>
+  <div class="subtitle">Enter exam details provided by your instructor</div>
+
+  <div class="error" id="error"></div>
+
+  <div class="field">
+    <label for="startUrl">Exam / Start URL</label>
+    <input type="text" id="startUrl" class="normal-font" placeholder="https://lms.example.com/mod/quiz/view.php?id=123" autocomplete="off">
+  </div>
+
+  <div class="field">
+    <label for="bek">Browser Exam Key</label>
+    <input type="text" id="bek" placeholder="64-character hex string" maxlength="64" autocomplete="off">
+    <div class="field-info">Paste the Browser Exam Key from your instructor, or leave blank if not required.</div>
+  </div>
+
+  <hr class="divider"><span>optional</span>
+
+  <div class="field">
+    <label for="quitPassword">Quit Password</label>
+    <input type="password" id="quitPassword" class="normal-font" placeholder="Password to exit the exam" autocomplete="off">
+    <div class="field-info">You will need this password to close the browser after the exam.</div>
+  </div>
+
+  <div class="button-row">
+    <button class="btn secondary" id="importBtn" type="button">Import .seb File</button>
+    <button class="btn" id="joinBtn" type="button">Join Exam</button>
+  </div>
+  <div class="skip-hint">
+    <a href="#" id="skipLink">Skip verification and open URL directly</a>
+  </div>
+</div>
+
+<script>
+  const errorEl = document.getElementById("error");
+  const startUrlEl = document.getElementById("startUrl");
+  const bekEl = document.getElementById("bek");
+  const quitPasswordEl = document.getElementById("quitPassword");
+  const joinBtn = document.getElementById("joinBtn");
+  const importBtn = document.getElementById("importBtn");
+  const skipLink = document.getElementById("skipLink");
+
+  function showError(msg) {
+    errorEl.textContent = msg;
+    errorEl.classList.add("visible");
+  }
+
+  function hideError() {
+    errorEl.classList.remove("visible");
+  }
+
+  function setLoading(loading) {
+    joinBtn.disabled = loading;
+    importBtn.disabled = loading;
+    skipLink.style.pointerEvents = loading ? "none" : "auto";
+    skipLink.style.opacity = loading ? "0.5" : "1";
+    joinBtn.textContent = loading ? "Joining..." : "Join Exam";
+    importBtn.textContent = loading ? "Working..." : "Import .seb File";
+  }
+
+  window.sebAPI.getJoinUrl().then(function(url) {
+    if (url) {
+      startUrlEl.value = url;
+    }
+  }).catch(function() {});
+
+  importBtn.addEventListener("click", function() {
+    hideError();
+    setLoading(true);
+
+    window.sebAPI.importSebConfig().then(function(result) {
+      if (!result.success && !result.canceled) {
+        showError(result.error || "Failed to import SEB config.");
+      }
+      if (!result.success) {
+        setLoading(false);
+      }
+    }).catch(function(err) {
+      showError("Failed to import SEB config: " + (err.message || "unknown error"));
+      setLoading(false);
+    });
+  });
+
+  joinBtn.addEventListener("click", function() {
+    hideError();
+
+    var startUrl = startUrlEl.value.trim();
+    if (!startUrl) {
+      showError("Please enter the exam / start URL.");
+      startUrlEl.focus();
+      return;
+    }
+
+    if (!startUrl.startsWith("http://") && !startUrl.startsWith("https://")) {
+      showError("Start URL must begin with http:// or https://");
+      startUrlEl.focus();
+      return;
+    }
+
+    var bek = bekEl.value.trim();
+    if (bek && bek.length !== 64) {
+      showError("Browser Exam Key must be exactly 64 hex characters if provided.");
+      bekEl.focus();
+      return;
+    }
+    if (bek && !/^[0-9a-fA-F]{64}$/.test(bek)) {
+      showError("Browser Exam Key contains invalid characters. Use only 0-9, a-f.");
+      bekEl.focus();
+      return;
+    }
+
+    var quitPassword = quitPasswordEl.value;
+
+    setLoading(true);
+
+    window.sebAPI.submitJoinExam({
+      startUrl: startUrl,
+      browserExamKey: bek || null,
+      quitPassword: quitPassword || null
+    }).then(function(result) {
+      if (!result.success) {
+        showError(result.error || "Failed to join exam.");
+        setLoading(false);
+      }
+    }).catch(function(err) {
+      showError("Failed to join exam: " + (err.message || "unknown error"));
+      setLoading(false);
+    });
+  });
+
+  skipLink.addEventListener("click", function(e) {
+    e.preventDefault();
+    hideError();
+
+    var startUrl = startUrlEl.value.trim();
+    if (!startUrl) {
+      showError("Please enter the exam / start URL first.");
+      startUrlEl.focus();
+      return;
+    }
+    if (!startUrl.startsWith("http://") && !startUrl.startsWith("https://")) {
+      showError("Start URL must begin with http:// or https://");
+      startUrlEl.focus();
+      return;
+    }
+
+    var quitPassword = quitPasswordEl.value;
+    setLoading(true);
+
+    window.sebAPI.submitJoinExam({
+      startUrl: startUrl,
+      browserExamKey: null,
+      quitPassword: quitPassword || null
+    }).then(function(result) {
+      if (!result.success) {
+        showError(result.error || "Failed to join exam.");
+        setLoading(false);
+      }
+    }).catch(function(err) {
+      showError("Failed to join exam: " + (err.message || "unknown error"));
+      setLoading(false);
+    });
+  });
+
+  startUrlEl.addEventListener("keydown", function(e) {
+    if (e.key === "Enter") joinBtn.click();
+  });
+  bekEl.addEventListener("keydown", function(e) {
+    if (e.key === "Enter") joinBtn.click();
+  });
+  quitPasswordEl.addEventListener("keydown", function(e) {
+    if (e.key === "Enter") joinBtn.click();
+  });
+
+  startUrlEl.focus();
+</script>
+</body>
+</html>

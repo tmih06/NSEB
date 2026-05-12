@@ -1,0 +1,87 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>StringsTable</key>
+	<string>DownUploads</string>
+	<key>PreferenceSpecifiers</key>
+	<array>
+		<dict>
+			<key>Type</key>
+			<string>PSGroupSpecifier</string>
+			<key>Title</key>
+			<string>Downloading/Uploading Files</string>
+			<key>FooterText</key>
+			<string>In iOS versions prior to 14.5 only website generated files (using the data: scheme) can be downloaded. Those files can be accessed in the Files app (&apos;On My iPad/iPhone&apos; location). Uploading allows to access camera, the full photo library and iCloud Drive and therefore is insecure!</string>
+		</dict>
+		<dict>
+			<key>Type</key>
+			<string>PSToggleSwitchSpecifier</string>
+			<key>Title</key>
+			<string>Allow Downloading and Uploading Files</string>
+			<key>Key</key>
+			<string>org_safeexambrowser_SEB_allowDownUploads</string>
+		</dict>
+		<dict>
+			<key>Type</key>
+			<string>PSToggleSwitchSpecifier</string>
+			<key>Title</key>
+			<string>Allow Downloading Files</string>
+			<key>Key</key>
+			<string>org_safeexambrowser_SEB_allowDownloads</string>
+		</dict>
+		<dict>
+			<key>Type</key>
+			<string>PSToggleSwitchSpecifier</string>
+			<key>Title</key>
+			<string>Open App for Downloaded File</string>
+			<key>Key</key>
+			<string>org_safeexambrowser_SEB_openDownloads</string>
+		</dict>
+		<dict>
+			<key>Type</key>
+			<string>PSToggleSwitchSpecifier</string>
+			<key>Title</key>
+			<string>Allow Uploading Photos and Files</string>
+			<key>Key</key>
+			<string>org_safeexambrowser_SEB_allowUploadsiOS</string>
+			<key>FooterText</key>
+			<string>Uploading allows to access camera, the full photo library and iCloud Drive and therefore is insecure!</string>
+		</dict>
+		<dict>
+			<key>Type</key>
+			<string>PSGroupSpecifier</string>
+			<key>Title</key>
+			<string></string>
+			<key>FooterText</key>
+			<string>Specify file types which will be downloaded instead of displayed by the browser. You can also indicate the associated additional app for the file type and use the option &apos;Open App for Downloaded File&apos; above.</string>
+		</dict>
+		<dict>
+			<key>Type</key>
+			<string>PSChildPaneSpecifier</string>
+			<key>Title</key>
+			<string>File Types</string>
+			<key>File</key>
+			<string>DownloadFileTypes</string>
+			<key>Key</key>
+			<string>downloadFileTypesChildPane</string>
+		</dict>
+		<dict>
+			<key>Type</key>
+			<string>PSGroupSpecifier</string>
+			<key>Title</key>
+			<string></string>
+			<key>FooterText</key>
+			<string>Disable to prevent that SEB config files and seb(s):// links can start exams with individual settings or reconfigure the client.</string>
+		</dict>
+		<dict>
+			<key>Type</key>
+			<string>PSToggleSwitchSpecifier</string>
+			<key>Title</key>
+			<string>Download &amp; Open Config Files</string>
+			<key>Key</key>
+			<string>org_safeexambrowser_SEB_downloadAndOpenSebConfig</string>
+		</dict>
+	</array>
+</dict>
+</plist>

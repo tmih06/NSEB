@@ -1,0 +1,188 @@
+# This workflow will build a Java project with Maven
+# For more information see: https://help.github.com/actions/language-and-framework-guides/building-and-testing-java-with-maven
+
+name: build
+
+on:
+  push:
+    branches:
+      - '**'
+    tags:
+      - '**'
+  pull_request:
+    branches: [master, development]
+
+jobs:
+  maven-build-reporting:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Get short SHA
+      uses: benjlevesque/short-sha@v3.0
+      id: short-sha
+    - name: Store short SHA as environment variable
+      run: echo $SHA
+      env:
+        SHA: ${{ steps.short-sha.outputs.sha }}
+    - name: Set env
+      run: echo "TAG_NAME=${GITHUB_REF#refs/*/}" >> $GITHUB_ENV
+    - name: Test tag name
+      run: |
+        echo $TAG_NAME
+        echo ${{ env.TAG_NAME }}
+    -
+      name: Checkout repository
+      uses: actions/checkout@v4
+    -
+      name: Build Test Reporting
+      uses: actions/setup-java@v4
+      with:
+        java-version: '17'
+        distribution: 'adopt'
+    -
+      name: Cache Maven packages
+      uses: actions/cache@v4
+      with:
+        path: ~/.m2
+        key: ${{ runner.os }}-m2-${{ hashFiles('**/pom.xml') }}
+        restore-keys: ${{ runner.os }}-m2
+    -
+      name: Build with Maven
+      run: mvn clean install -e -P let_reporting -Dsebserver-version="${{ env.TAG_NAME }}-${{ env.SHA }}"
+      env:
+        sebserver-version: ${{ env.TAG_NAME }}-${{ env.SHA }}
+
+    - name: Simplify package name
+      run: mv target/seb-server-${{ env.TAG_NAME }}-${{ env.SHA }}.jar target/seb-server.jar
+    - uses: actions/upload-artifact@v4
+      with:
+        name: Package
+        path: target/seb-server.jar
+
+  docker-build:
+    needs: maven-build-reporting
+    # Run only on tagging
+    if: github.event_name == 'push' && contains(github.ref, 'refs/tags/')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+      # This is used to complete the identity challenge
+      # with sigstore/fulcio when running outside of PRs.
+      id-token: write
+      
+    steps:
+    -
+      name: Set env
+      run: echo "TAG_NAME=${GITHUB_REF#refs/*/}" >> $GITHUB_ENV
+    -
+      name: Test
+      run: |
+        echo $TAG_NAME
+        echo ${{ env.TAG_NAME }}
+    -
+      name: Set up QEMU
+      uses: docker/setup-qemu-action@v3
+    -
+      name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v3.2.0
+    -
+      name: Login to DockerHub
+      uses: docker/login-action@v2
+      with:
+        username: ${{ secrets.DOCKERHUB_USERNAME }}
+        password: ${{ secrets.DOCKERHUB_TOKEN }}
+    -
+      name: Checkout repository
+      uses: actions/checkout@v4
+      
+      # Install the cosign tool except on PR
+      # https://github.com/sigstore/cosign-installer
+    -
+      name: Install cosign
+      if: github.event_name != 'pull_request'
+      uses: sigstore/cosign-installer@main
+    -
+      name: Download a single artifact
+      uses: actions/download-artifact@v4
+      with:
+          name: Package
+    -
+      name: Extract metadata (tags, labels) for Docker
+      id: meta
+      uses: docker/metadata-action@v4
+      with:
+         images: anhefti/seb-server
+         tags: |
+           type=raw,${{ env.TAG_NAME }}
+    -
+      name: Build and push
+      id: docker_build
+      uses: docker/build-push-action@v4
+      with:
+        context: .
+        file: ./docker/Dockerfile
+        push: true
+        tags: |
+          anhefti/seb-server:${{ env.TAG_NAME }}
+      # Sign the resulting Docker image digest except on PRs.
+      # This will only write to the public Rekor transparency log when the Docker
+      # repository is public to avoid leaking data.  If you would like to publish
+      # transparency data even for private images, pass --force to cosign below.
+      # https://github.com/sigstore/cosign
+    - name: Sign the published Docker image
+      if: ${{ github.event_name != 'pull_request' }}
+      # This step uses the identity token to provision an ephemeral certificate
+      # against the sigstore community Fulcio instance.
+      run: yes | cosign sign ${TAGS}
+      env:
+        COSIGN_EXPERIMENTAL: true
+        TAGS: ${{ steps.meta.outputs.tags }}
+        
+  docker-admin-build:
+    needs: maven-build-reporting
+    # Run only on tagging
+    if: github.event_name == 'push' && contains(github.ref, 'refs/tags/')
+    runs-on: ubuntu-latest
+    steps:
+      - name: Set env
+        run: echo "TAG_NAME=${GITHUB_REF#refs/*/}" >> $GITHUB_ENV
+      - name: Test
+        run: |
+          echo $TAG_NAME
+          echo ${{ env.TAG_NAME }}
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3.0.0
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3.1.0
+      - name: Login to DockerHub
+        uses: docker/login-action@v3.0.0
+        with:
+          username: ${{ secrets.DOCKERHUB_ADMIN_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_ADMIN_TOKEN }}
+      - name: Checkout repository
+        uses: actions/checkout@v4.1.1
+      - name: Download a single artifact
+        uses: actions/download-artifact@v4.1.4
+        with:
+          name: Package
+      - name: Build and push
+        id: docker_build
+        uses: docker/build-push-action@v5.1.0
+        with:
+          context: .
+          file: ./docker/Dockerfile
+          push: true
+          tags: |
+            sebadmin/seb-server:${{ env.TAG_NAME }}
+        
+  cleanup:
+    needs: [maven-build-reporting, docker-build]
+    if: |
+      always()
+    runs-on: ubuntu-latest
+    steps:
+    -
+      name: Delete Artifacts
+      uses: geekyeggo/delete-artifact@v5
+      with:
+          name: Package

@@ -1,0 +1,28 @@
+{
+  "name": "seb-linux",
+  "version": "0.1.0",
+  "description": "Safe Exam Browser - Linux Port (Educational Prototype)",
+  "main": "src/main.js",
+  "scripts": {
+    "start": "electron .",
+    "build:dir": "electron-builder --linux dir",
+    "build:deb": "electron-builder --linux deb",
+    "build:appimage": "electron-builder --linux AppImage"
+  },
+  "build": {
+    "appId": "org.safeexambrowser.seb-linux",
+    "productName": "Safe Exam Browser",
+    "linux": {
+      "target": ["AppImage", "deb"],
+      "category": "Education",
+      "mimeTypes": ["application/seb"]
+    },
+    "protocols": {
+      "name": "SEB Config Link",
+      "schemes": ["seb"]
+    }
+  },
+  "dependencies": {
+    "electron": "^33.0.0"
+  }
+}
