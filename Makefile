@@ -1,5 +1,5 @@
 
-.PHONY: help sync-sources install start test clean
+.PHONY: help sync-sources install start serve serve-down test clean
 
 SEB_LINUX_DIR := seb-linux
 SEB_MAC_DIR := seb-mac
@@ -16,6 +16,8 @@ help:
 		'  make sync-sources - clone sibling SEB source trees if missing' \
 		'  make install  - install seb-linux dependencies' \
 		'  make start    - launch seb-linux from the root project' \
+		'  make serve    - rebuild and boot a fresh seb-server local test exam stack' \
+		'  make serve-down - stop and remove the seb-server local test stack' \
 		'  make test     - run seb-linux tests' \
 		'  make clean    - remove seb-linux node_modules'
 
@@ -30,6 +32,12 @@ install: sync-sources
 
 start:
 	npm --prefix $(SEB_LINUX_DIR) start
+
+serve:
+	./scripts/serve-local-test.sh
+
+serve-down:
+	docker compose -f $(SEB_SERVER_DIR)/local-test/docker-compose.yml down -v --remove-orphans
 
 test:
 	node $(SEB_LINUX_DIR)/test/test.js

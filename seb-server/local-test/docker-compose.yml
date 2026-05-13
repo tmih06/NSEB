@@ -33,5 +33,16 @@ services:
     volumes:
       - ./config:/sebserver/config:ro
 
+  exam-site:
+    image: nginx:1.27-alpine
+    container_name: seb-local-exam-site
+    depends_on:
+      seb-server:
+        condition: service_started
+    ports:
+      - "18180:80"
+    volumes:
+      - ./test-exam:/usr/share/nginx/html:ro
+
 volumes:
   seb-local-mariadb-data:

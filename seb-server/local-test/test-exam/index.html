@@ -1,0 +1,407 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Local Test Exam</title>
+  <style>
+    :root {
+      --bg: #f5efe1;
+      --panel: rgba(255, 250, 242, 0.92);
+      --ink: #1f1d17;
+      --muted: #685f52;
+      --accent: #bf5a36;
+      --accent-dark: #8f3d21;
+      --line: rgba(31, 29, 23, 0.12);
+      --shadow: 0 24px 60px rgba(53, 38, 20, 0.14);
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      font-family: "IBM Plex Sans", "Segoe UI", sans-serif;
+      color: var(--ink);
+      background:
+        radial-gradient(circle at top left, rgba(191, 90, 54, 0.22), transparent 35%),
+        linear-gradient(135deg, #f8f3e8 0%, #efe6d2 46%, #f5efe1 100%);
+      min-height: 100vh;
+    }
+
+    main {
+      width: min(1100px, calc(100% - 32px));
+      margin: 0 auto;
+      padding: 24px 0 40px;
+    }
+
+    .hero {
+      display: grid;
+      gap: 18px;
+      padding: 28px;
+      border: 1px solid var(--line);
+      border-radius: 28px;
+      background: linear-gradient(135deg, rgba(255, 248, 239, 0.96), rgba(248, 239, 226, 0.9));
+      box-shadow: var(--shadow);
+    }
+
+    .eyebrow {
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: 0.16em;
+      text-transform: uppercase;
+      color: var(--accent-dark);
+    }
+
+    h1 {
+      margin: 0;
+      font-family: "IBM Plex Serif", Georgia, serif;
+      font-size: clamp(2rem, 4vw, 3.3rem);
+      line-height: 0.98;
+    }
+
+    .hero-grid {
+      display: grid;
+      grid-template-columns: 2fr 1fr;
+      gap: 20px;
+    }
+
+    .meta,
+    .section,
+    .summary {
+      border: 1px solid var(--line);
+      border-radius: 24px;
+      background: var(--panel);
+      backdrop-filter: blur(8px);
+      box-shadow: var(--shadow);
+    }
+
+    .meta {
+      padding: 20px;
+      display: grid;
+      gap: 14px;
+    }
+
+    .meta strong {
+      display: block;
+      font-size: 0.9rem;
+      margin-bottom: 4px;
+      color: var(--muted);
+    }
+
+    .hero-note {
+      margin: 0;
+      max-width: 64ch;
+      color: var(--muted);
+      line-height: 1.6;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: minmax(0, 2fr) minmax(280px, 1fr);
+      gap: 20px;
+      margin-top: 20px;
+    }
+
+    .paper {
+      display: grid;
+      gap: 20px;
+    }
+
+    .section {
+      padding: 24px;
+    }
+
+    .section h2 {
+      margin: 0 0 8px;
+      font-size: 1.15rem;
+    }
+
+    .section p {
+      margin: 0 0 16px;
+      color: var(--muted);
+      line-height: 1.55;
+    }
+
+    .question {
+      display: grid;
+      gap: 12px;
+      padding-top: 12px;
+      border-top: 1px solid var(--line);
+    }
+
+    .question:first-of-type {
+      border-top: 0;
+      padding-top: 0;
+    }
+
+    .question label {
+      display: flex;
+      gap: 12px;
+      align-items: flex-start;
+      padding: 12px 14px;
+      border-radius: 16px;
+      background: rgba(255, 255, 255, 0.72);
+      cursor: pointer;
+    }
+
+    .summary {
+      padding: 22px;
+      position: sticky;
+      top: 18px;
+      align-self: start;
+      display: grid;
+      gap: 18px;
+    }
+
+    .timer {
+      display: grid;
+      gap: 6px;
+      padding: 18px;
+      border-radius: 20px;
+      background: #1f1d17;
+      color: #fff8ef;
+    }
+
+    .timer strong {
+      font-size: clamp(2rem, 5vw, 2.8rem);
+      line-height: 1;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .pill {
+      display: inline-flex;
+      width: fit-content;
+      padding: 6px 10px;
+      border-radius: 999px;
+      background: rgba(191, 90, 54, 0.14);
+      color: var(--accent-dark);
+      font-size: 0.85rem;
+      font-weight: 700;
+    }
+
+    .summary ul {
+      margin: 0;
+      padding-left: 18px;
+      color: var(--muted);
+      line-height: 1.6;
+    }
+
+    textarea,
+    input[type="text"] {
+      width: 100%;
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      padding: 12px 14px;
+      font: inherit;
+      background: rgba(255, 255, 255, 0.9);
+      color: inherit;
+    }
+
+    .actions {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    button {
+      border: 0;
+      border-radius: 999px;
+      padding: 12px 18px;
+      font: inherit;
+      font-weight: 700;
+      cursor: pointer;
+      transition: transform 120ms ease, background 120ms ease;
+    }
+
+    button.primary {
+      background: var(--accent);
+      color: #fff7f1;
+    }
+
+    button.secondary {
+      background: rgba(31, 29, 23, 0.08);
+      color: var(--ink);
+    }
+
+    button:hover {
+      transform: translateY(-1px);
+    }
+
+    #status {
+      min-height: 1.4em;
+      margin: 0;
+      color: var(--muted);
+    }
+
+    @media (max-width: 840px) {
+      .hero-grid,
+      .grid {
+        grid-template-columns: 1fr;
+      }
+
+      .summary {
+        position: static;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <section class="hero">
+      <div class="eyebrow">Mock Exam Workspace</div>
+      <div class="hero-grid">
+        <div>
+          <h1>Local Test Exam</h1>
+          <p class="hero-note">
+            This page is served by the `seb-server/local-test` stack and is meant to behave like a small
+            real exam destination for SEB client testing. Answers stay in the browser and can be saved
+            locally while you verify handshake, config download, navigation, and session behavior.
+          </p>
+        </div>
+        <div class="meta">
+          <div>
+            <strong>Candidate</strong>
+            <span>Use any local test identity.</span>
+          </div>
+          <div>
+            <strong>Duration</strong>
+            <span>45 minutes</span>
+          </div>
+          <div>
+            <strong>Sections</strong>
+            <span>Short response and multiple choice</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <div class="grid">
+      <div class="paper">
+        <section class="section">
+          <h2>Candidate Check-In</h2>
+          <p>Enter a local test identifier so you can tell one run from another.</p>
+          <input id="candidateId" type="text" placeholder="Candidate ID">
+        </section>
+
+        <section class="section">
+          <h2>Section 1: Short Response</h2>
+          <p>Describe one reason an institution might test SEB Server and its client in a local environment before a live exam.</p>
+          <textarea id="shortAnswer" rows="6" placeholder="Write your answer here"></textarea>
+        </section>
+
+        <section class="section">
+          <h2>Section 2: Quick Checks</h2>
+          <div class="question">
+            <strong>1. Which part of this stack provides the exam page content?</strong>
+            <label><input type="radio" name="q1" value="a"> The static `exam-site` container on port 18180</label>
+            <label><input type="radio" name="q1" value="b"> MariaDB directly</label>
+            <label><input type="radio" name="q1" value="c"> The Electron preload script</label>
+          </div>
+          <div class="question">
+            <strong>2. What does the exported client `.seb` file primarily contain here?</strong>
+            <label><input type="radio" name="q2" value="a"> A compiled Electron bundle</label>
+            <label><input type="radio" name="q2" value="b"> SEB Server connection settings and the chosen exam id</label>
+            <label><input type="radio" name="q2" value="c"> A database snapshot</label>
+          </div>
+        </section>
+
+        <section class="section">
+          <h2>Save State</h2>
+          <p>The buttons below just persist or clear local browser state so repeated client runs are easier to observe.</p>
+          <div class="actions">
+            <button class="primary" id="saveButton" type="button">Save Answers</button>
+            <button class="secondary" id="clearButton" type="button">Clear Answers</button>
+          </div>
+          <p id="status"></p>
+        </section>
+      </div>
+
+      <aside class="summary">
+        <div class="timer">
+          <span class="pill">Session Timer</span>
+          <strong id="timerValue">45:00</strong>
+          <span>Local countdown for UI testing.</span>
+        </div>
+        <div>
+          <span class="pill">Checklist</span>
+          <ul>
+            <li>Join through the SEB client using the generated connection config.</li>
+            <li>Confirm the client receives exam settings from SEB Server.</li>
+            <li>Verify this page opens inside the client as the exam destination.</li>
+          </ul>
+        </div>
+      </aside>
+    </div>
+  </main>
+
+  <script>
+    const storageKey = "nseb-local-test-exam";
+    const timerValue = document.getElementById("timerValue");
+    const status = document.getElementById("status");
+    const candidateId = document.getElementById("candidateId");
+    const shortAnswer = document.getElementById("shortAnswer");
+
+    function loadState() {
+      try {
+        const raw = sessionStorage.getItem(storageKey);
+        if (!raw) return;
+        const state = JSON.parse(raw);
+        candidateId.value = state.candidateId || "";
+        shortAnswer.value = state.shortAnswer || "";
+        for (const [name, value] of Object.entries(state.answers || {})) {
+          const input = document.querySelector(`input[name="${name}"][value="${value}"]`);
+          if (input) input.checked = true;
+        }
+        status.textContent = "Recovered session data from this browser run.";
+      } catch {
+        status.textContent = "Could not restore previous answers.";
+      }
+    }
+
+    function collectAnswers() {
+      const answers = {};
+      for (const name of ["q1", "q2"]) {
+        const selected = document.querySelector(`input[name="${name}"]:checked`);
+        if (selected) answers[name] = selected.value;
+      }
+      return {
+        candidateId: candidateId.value,
+        shortAnswer: shortAnswer.value,
+        answers
+      };
+    }
+
+    document.getElementById("saveButton").addEventListener("click", () => {
+      sessionStorage.setItem(storageKey, JSON.stringify(collectAnswers()));
+      status.textContent = "Saved current answers in session storage.";
+    });
+
+    document.getElementById("clearButton").addEventListener("click", () => {
+      sessionStorage.removeItem(storageKey);
+      candidateId.value = "";
+      shortAnswer.value = "";
+      document.querySelectorAll('input[type="radio"]').forEach((input) => {
+        input.checked = false;
+      });
+      status.textContent = "Cleared local answers.";
+    });
+
+    let remainingSeconds = 45 * 60;
+    function renderTimer() {
+      const minutes = String(Math.floor(remainingSeconds / 60)).padStart(2, "0");
+      const seconds = String(remainingSeconds % 60).padStart(2, "0");
+      timerValue.textContent = `${minutes}:${seconds}`;
+    }
+
+    renderTimer();
+    setInterval(() => {
+      if (remainingSeconds > 0) remainingSeconds -= 1;
+      renderTimer();
+    }, 1000);
+
+    loadState();
+  </script>
+</body>
+</html>

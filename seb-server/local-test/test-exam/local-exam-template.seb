@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+  <dict>
+    <key>allowQuit</key>
+    <true/>
+    <key>allowWlan</key>
+    <true/>
+    <key>audioControlEnabled</key>
+    <false/>
+    <key>audioMute</key>
+    <false/>
+    <key>browserWindowAllowReload</key>
+    <true/>
+    <key>examSessionClearCookiesOnStart</key>
+    <true/>
+    <key>showInputLanguage</key>
+    <true/>
+    <key>showReloadButton</key>
+    <true/>
+    <key>showTaskBar</key>
+    <true/>
+    <key>showTime</key>
+    <true/>
+    <key>startURL</key>
+    <string>__EXAM_URL__</string>
+    <key>URLFilterEnable</key>
+    <false/>
+    <key>URLFilterEnableContentFilter</key>
+    <false/>
+  </dict>
+</plist>
