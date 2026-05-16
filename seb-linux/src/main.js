@@ -9,6 +9,7 @@ const path = require("path");
 const crypto = require("crypto");
 const { SebSession } = require("./session");
 const { SebServerClient } = require("./serverClient");
+const configParser = require("./configParser");
 const appState = require("./appState");
 
 let mainWindow = null;
@@ -16,10 +17,21 @@ let sebHeadersInstalled = false;
 let sebServerClient = null;
 let sebServerPingTimer = null;
 let initialJoinUrl = null;
+// SEB-Server instruction-confirm IDs that still need to be acknowledged on the
+// next ping. Mirrors `instructionConfirmations` queue in
+// seb-win-refactoring/SafeExamBrowser.Server/ServerProxy.cs.
+const pendingInstructionConfirms = [];
 
 const SEB_REQUEST_HASH = "X-SafeExamBrowser-RequestHash";
 const SEB_CONFIG_KEY_HASH = "X-SafeExamBrowser-ConfigKeyHash";
-const ENCRYPTED_SEB_PREFIXES = new Set(["pswd", "pswcc", "pkhs", "phsk"]);
+const ENCRYPTED_SEB_PREFIXES = configParser.ENCRYPTED_BLOCK_PREFIXES;
+
+// SEB-Server ping instruction names. Names match the canonical strings sent by
+// seb-server (see ch.ethz.seb.sebserver…ClientInstruction*) and consumed by
+// seb-win-refactoring/SafeExamBrowser.Server/Data/Instructions.cs.
+const INSTRUCTION_QUIT = "SEB_QUIT";
+const INSTRUCTION_LOCK_SCREEN = "SEB_FORCE_LOCK_SCREEN";
+const INSTRUCTION_NOTIFICATION_CONFIRM = "NOTIFICATION_CONFIRM";
 
 function installSebHeaders() {
   if (sebHeadersInstalled || !mainWindow) return;
@@ -90,6 +102,46 @@ function clearServerPingTimer() {
   }
 }
 
+function handleServerInstruction(instruction) {
+  if (!instruction || typeof instruction !== "object") return;
+
+  const name = instruction.instruction;
+  const attrs = instruction.attributes || {};
+  const confirmId =
+    typeof attrs["instruction-confirm"] === "string" || typeof attrs["instruction-confirm"] === "number"
+      ? String(attrs["instruction-confirm"])
+      : null;
+
+  if (confirmId) {
+    pendingInstructionConfirms.push(confirmId);
+  }
+
+  switch (name) {
+    case INSTRUCTION_QUIT:
+      console.log("[SEB] SEB Server requested termination — quitting.");
+      // Defer to next tick so the confirm gets queued onto the next ping.
+      setImmediate(() => app.quit());
+      break;
+    case INSTRUCTION_LOCK_SCREEN:
+      // Linux client doesn't yet implement the proctor lock-screen UI; we just
+      // log it so the proctor can see we received it. Confirm-id was already
+      // queued above so the server stops re-sending the instruction.
+      console.warn(
+        "[SEB] SEB Server lock-screen instruction received (lock-screen UI not implemented on Linux):",
+        attrs.message || "",
+      );
+      break;
+    case INSTRUCTION_NOTIFICATION_CONFIRM:
+      // Server-side ack of a notification we previously raised — nothing to do.
+      break;
+    default:
+      if (name) {
+        console.log(`[SEB] SEB Server instruction received: ${name}`);
+      }
+      break;
+  }
+}
+
 function startServerPing(client) {
   clearServerPingTimer();
   if (!client || !client.pingInterval || client.pingInterval <= 0) {
@@ -101,9 +153,16 @@ function startServerPing(client) {
     if (pingInFlight) return;
     pingInFlight = true;
     try {
-      const result = await client.sendPing();
+      const confirmId = pendingInstructionConfirms.shift() || "";
+      const result = await client.sendPing(confirmId);
       if (!result.success) {
         console.warn("[SEB] SEB Server ping failed:", result.error);
+        // Put the confirm back so it gets retried next tick.
+        if (confirmId) pendingInstructionConfirms.unshift(confirmId);
+        return;
+      }
+      if (result.instruction) {
+        handleServerInstruction(result.instruction);
       }
     } catch (err) {
       console.warn("[SEB] SEB Server ping failed:", err.message);
@@ -131,6 +190,17 @@ function selectExam(exams, configuredExamId) {
   }
 
   throw new Error("Multiple running exams are available, but exam selection UI is not implemented yet");
+}
+
+function pickServerStartUrl(exam) {
+  if (!exam || typeof exam !== "object") return null;
+  // seb-server returns the start URL on the exam record under `url`. Older
+  // builds and seb-mac/seb-win parsers also accept `startURL` / `startUrl`.
+  for (const key of ["url", "startURL", "startUrl"]) {
+    const v = exam[key];
+    if (typeof v === "string" && v.length > 0) return v;
+  }
+  return null;
 }
 
 async function bootstrapServerSession(initialSession) {
@@ -193,6 +263,22 @@ async function bootstrapServerSession(initialSession) {
   session.loadFromBuffer(result.configBuffer);
   if (client.serverBrowserExamKey) {
     session.setServerBrowserExamKey(client.serverBrowserExamKey);
+  }
+
+  // seb-server delivers the start URL on the exam record (as `exam.url`),
+  // not always inside the exam-config payload. Without this fall-back the
+  // kiosk would have nowhere to navigate after a successful join, even
+  // though seb-mac and seb-win-refactoring both happily resolve the same
+  // server-supplied start URL.
+  if (!session.startUrl) {
+    const fallback = pickServerStartUrl(exam);
+    if (fallback) {
+      session.startUrl = fallback;
+      session.settings = session.settings || {};
+      if (!session.settings.startURL) {
+        session.settings.startURL = fallback;
+      }
+    }
   }
 
   return { session, client };

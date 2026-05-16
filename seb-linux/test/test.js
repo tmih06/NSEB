@@ -106,6 +106,71 @@ test("configParser getBool helper", () => {
   assertEquals(configParser.getBool(d, "missing", true), true);
 });
 
+test("self-closing <array/> does not swallow following keys", () => {
+  const xml =
+    '<?xml version="1.0" encoding="UTF-8"?>\n' +
+    '<plist version="1.0">\n' +
+    "<dict>\n" +
+    "  <key>URLFilterRules</key>\n" +
+    "  <array/>\n" +
+    "  <key>startURL</key>\n" +
+    "  <string>https://example.com/exam</string>\n" +
+    "  <key>sendBrowserExamKey</key>\n" +
+    "  <true/>\n" +
+    "</dict>\n" +
+    "</plist>";
+  const result = configParser.loadConfig(Buffer.from(xml, "utf-8"));
+  assert(result !== null, "result should not be null");
+  assert(Array.isArray(result.dict.URLFilterRules), "URLFilterRules must be []");
+  assertEquals(result.dict.URLFilterRules.length, 0);
+  assertEquals(result.dict.startURL, "https://example.com/exam");
+  assertEquals(result.dict.sendBrowserExamKey, true);
+});
+
+test("loadConfig parses a single-gzipped XML payload", () => {
+  const zlib = require("zlib");
+  const xml =
+    '<?xml version="1.0" encoding="UTF-8"?>\n' +
+    '<plist version="1.0"><dict>' +
+    "<key>startURL</key><string>https://example.com/exam</string>" +
+    "</dict></plist>";
+  const gz = zlib.gzipSync(Buffer.from(xml, "utf-8"));
+  const result = configParser.loadConfig(gz);
+  assert(result !== null);
+  assertEquals(result.format, "xml");
+  assertEquals(result.dict.startURL, "https://example.com/exam");
+});
+
+test("loadConfig parses canonical SEB binary plnd block (gzip(plnd + gzip(xml)))", () => {
+  const zlib = require("zlib");
+  const xml =
+    '<?xml version="1.0" encoding="UTF-8"?>\n' +
+    '<plist version="1.0"><dict>' +
+    "<key>startURL</key><string>https://example.com/binary</string>" +
+    "</dict></plist>";
+  const innerGz = zlib.gzipSync(Buffer.from(xml, "utf-8"));
+  const block = Buffer.concat([Buffer.from("plnd", "ascii"), innerGz]);
+  const outerGz = zlib.gzipSync(block);
+  const result = configParser.loadConfig(outerGz);
+  assert(result !== null, "binary result should not be null");
+  assertEquals(result.format, "binary");
+  assertEquals(result.dict.startURL, "https://example.com/binary");
+});
+
+test("ENCRYPTED_BLOCK_PREFIXES uses canonical 4-char block names", () => {
+  const expected = ["pswd", "pwcc", "pkhs", "phsk"];
+  for (const p of expected) {
+    assert(
+      configParser.ENCRYPTED_BLOCK_PREFIXES.has(p),
+      `expected ${p} in ENCRYPTED_BLOCK_PREFIXES`,
+    );
+  }
+  assert(
+    !configParser.ENCRYPTED_BLOCK_PREFIXES.has("pswcc"),
+    "5-char pswcc should not be present (it's a Linux-only typo)",
+  );
+});
+
 console.log("\n=== Session Tests ===");
 
 test("SebSession loads config and computes keys", () => {
