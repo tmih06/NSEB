@@ -23,7 +23,7 @@ services:
     container_name: seb-local-server
     depends_on:
       mariadb:
-        condition: service_started
+        condition: service_healthy
     environment:
       SERVER_PORT: "8080"
       JAVA_HEAP_MIN: "256m"
