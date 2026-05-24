@@ -2,6 +2,8 @@
   "name": "seb-linux",
   "version": "0.1.0",
   "description": "Safe Exam Browser - Linux Port (Educational Prototype)",
+  "author": "ETH Zurich",
+  "homepage": "https://safeexambrowser.org",
   "main": "src/main.js",
   "scripts": {
     "start": "electron .",
