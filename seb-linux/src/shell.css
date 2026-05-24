@@ -62,10 +62,13 @@ button {
 
 .toolbar-main {
   height: 100%;
-  display: grid;
-  grid-template-columns: auto auto auto auto 1fr auto;
+  display: flex;
   align-items: center;
   gap: 4px;
+}
+
+.toolbar-spacer {
+  flex: 1;
 }
 
 .toolbar-button {
@@ -81,8 +84,6 @@ button {
 }
 
 .toolbar-button:hover:not(:disabled),
-.taskbar-app:hover,
-.taskbar-icon:hover,
 .taskbar-widget:hover,
 .taskbar-quit:hover:not(:disabled),
 .menu-item:hover,
@@ -93,8 +94,6 @@ button {
 }
 
 .toolbar-button:active:not(:disabled),
-.taskbar-app:active,
-.taskbar-icon:active,
 .taskbar-widget:active,
 .taskbar-quit:active:not(:disabled) {
   background: var(--seb-active);
@@ -110,30 +109,6 @@ button {
   width: 18px;
   height: 18px;
   object-fit: contain;
-}
-
-.toolbar-brand img {
-  width: 20px;
-  height: 20px;
-}
-
-.address-wrap {
-  min-width: 0;
-}
-
-.address-wrap input {
-  width: 100%;
-  height: 25px;
-  padding: 0 10px;
-  border: 1px solid var(--seb-border-strong);
-  border-radius: 4px;
-  background: #ffffff;
-  color: #343434;
-}
-
-.address-wrap input:focus {
-  outline: 1px solid var(--seb-blue);
-  outline-offset: 0;
 }
 
 .toolbar-menu-wrap {
@@ -366,20 +341,40 @@ button {
 }
 
 .taskbar {
-  display: grid;
-  grid-template-columns: minmax(160px, 1fr) auto auto auto auto;
+  display: flex;
   align-items: stretch;
   border-top: 1px solid var(--seb-border);
   background: var(--seb-bg);
+  padding: 0 2px;
 }
 
-.taskbar-section {
+.taskbar-spacer {
+  flex: 1;
+}
+
+.taskbar-start {
   display: flex;
   align-items: stretch;
 }
 
-.taskbar-app,
-.taskbar-icon,
+.taskbar-system {
+  display: flex;
+  align-items: stretch;
+}
+
+.taskbar-logo {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 12px;
+}
+
+.taskbar-logo img {
+  width: 28px;
+  height: 28px;
+  object-fit: contain;
+}
+
 .taskbar-widget,
 .taskbar-quit {
   height: 100%;
@@ -389,35 +384,9 @@ button {
   justify-content: center;
   cursor: pointer;
   transition: background-color 120ms ease, border-color 120ms ease;
-}
-
-.taskbar-app {
-  min-width: 84px;
-  gap: 8px;
-  padding: 0 14px;
-}
-
-.taskbar-app img {
-  width: 18px;
-  height: 18px;
-  object-fit: contain;
-}
-
-.taskbar-app span {
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.taskbar-icon {
-  width: 40px;
-}
-
-.taskbar-icon img,
-.taskbar-quit img {
-  width: 18px;
-  height: 18px;
-  object-fit: contain;
+  background: transparent;
+  color: inherit;
+  font: inherit;
 }
 
 .taskbar-widget {
@@ -426,9 +395,14 @@ button {
   padding: 0 10px;
 }
 
-.taskbar-widget svg {
-  width: 18px;
-  height: 18px;
+.taskbar-battery {
+  min-width: 44px;
+  gap: 0;
+}
+
+.taskbar-battery svg {
+  width: 80px;
+  height: 44px;
   fill: none;
   stroke: currentColor;
   stroke-width: 1.8;
@@ -436,13 +410,9 @@ button {
   stroke-linejoin: round;
 }
 
-.taskbar-widget span {
-  font-size: 12px;
-  color: var(--seb-muted);
-}
-
-.taskbar-battery {
-  min-width: 74px;
+.taskbar-battery .battery-outline,
+.taskbar-battery .battery-nub {
+  stroke: currentColor;
 }
 
 .taskbar-battery .battery-level {
@@ -450,17 +420,40 @@ button {
   stroke: none;
 }
 
+.taskbar-battery.battery-green .battery-level { color: #388e3c; fill: #388e3c; }
+.taskbar-battery.battery-yellow .battery-level { color: #ffc107; fill: #ffc107; }
+.taskbar-battery.battery-red .battery-level { color: #f44336; fill: #f44336; }
+
+.taskbar-keyboard span {
+  font-size: 13px;
+  font-weight: 800;
+  color: #000000;
+}
+
 .taskbar-keyboard {
   min-width: 48px;
-  font-weight: 600;
 }
 
 .taskbar-clock {
   display: inline-flex;
+  flex-direction: column;
   align-items: center;
+  justify-content: center;
   padding: 0 12px;
-  color: var(--seb-muted);
   white-space: nowrap;
+  line-height: 1.3;
+  min-width: 70px;
+}
+
+.clock-time {
+  font-size: 12px;
+  color: var(--seb-text);
+  font-weight: 500;
+}
+
+.clock-date {
+  font-size: 11px;
+  color: var(--seb-muted);
 }
 
 .taskbar-quit {
@@ -469,8 +462,9 @@ button {
 }
 
 .taskbar-quit img {
-  width: 19px;
-  height: 19px;
+  width: 24px;
+  height: 24px;
+  object-fit: contain;
 }
 
 .modal-backdrop {
@@ -525,14 +519,5 @@ button {
   .join-header {
     flex-direction: column;
     align-items: flex-start;
-  }
-
-  .taskbar {
-    grid-template-columns: minmax(110px, 1fr) auto auto auto;
-  }
-
-  .taskbar-app span,
-  .taskbar-clock {
-    font-size: 12px;
   }
 }

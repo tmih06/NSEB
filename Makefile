@@ -1,5 +1,5 @@
 
-.PHONY: help sync-sources install start serve serve-down test clean
+.PHONY: help sync-sources install dev start serve serve-down test clean
 
 SEB_LINUX_DIR := seb-linux
 SEB_MAC_DIR := seb-mac
@@ -15,6 +15,7 @@ help:
 		'Available targets:' \
 		'  make sync-sources - clone sibling SEB source trees if missing' \
 		'  make install  - install seb-linux dependencies' \
+		'  make dev      - install deps and launch seb-linux (hot reload)' \
 		'  make start    - launch seb-linux from the root project' \
 		'  make serve    - rebuild and boot a fresh seb-server local test exam stack' \
 		'  make serve-down - stop and remove the seb-server local test stack' \
@@ -29,6 +30,9 @@ sync-sources:
 
 install: sync-sources
 	npm --prefix $(SEB_LINUX_DIR) install
+
+dev: install
+	npm --prefix $(SEB_LINUX_DIR) run dev
 
 start:
 	npm --prefix $(SEB_LINUX_DIR) start

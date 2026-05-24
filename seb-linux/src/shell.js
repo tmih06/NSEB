@@ -1,6 +1,5 @@
 (function () {
   const shellRoot = document.getElementById("shellRoot");
-  const addressBar = document.getElementById("addressBar");
   const loadingBar = document.getElementById("loadingBar");
   const joinPanel = document.getElementById("joinPanel");
   const formError = document.getElementById("formError");
@@ -8,16 +7,11 @@
   const browserExamKeyInput = document.getElementById("browserExamKey");
   const joinBtn = document.getElementById("joinBtn");
   const importBtn = document.getElementById("importBtn");
-  const appButtonLabel = document.getElementById("appButtonLabel");
-  const backBtn = document.getElementById("backBtn");
-  const forwardBtn = document.getElementById("forwardBtn");
-  const homeBtn = document.getElementById("homeBtn");
   const reloadBtn = document.getElementById("reloadBtn");
   const menuBtn = document.getElementById("menuBtn");
   const toolbarMenu = document.getElementById("toolbarMenu");
-  const clockWidget = document.getElementById("clockWidget");
-  const networkWidget = document.getElementById("networkWidget");
-  const batteryText = document.getElementById("batteryText");
+  const clockTime = document.getElementById("clockTime");
+  const clockDate = document.getElementById("clockDate");
   const batteryLevel = document.getElementById("batteryLevel");
   const keyboardText = document.getElementById("keyboardText");
   const quitBtn = document.getElementById("quitBtn");
@@ -110,35 +104,45 @@
 
   function updateClock() {
     const now = new Date();
-    clockWidget.textContent = now.toLocaleTimeString([], {
+    clockTime.textContent = now.toLocaleTimeString([], {
       hour: "2-digit",
       minute: "2-digit",
+    });
+    clockDate.textContent = now.toLocaleDateString([], {
+      day: "2-digit",
+      month: "2-digit",
+      year: "numeric",
     });
   }
 
   function updateKeyboardWidget() {
-    const language = (navigator.language || "en").split("-")[0];
-    keyboardText.textContent = language.toUpperCase();
-  }
-
-  function updateNetworkWidget() {
-    const online = navigator.onLine;
-    networkWidget.style.opacity = online ? "1" : "0.45";
-    networkWidget.title = online ? "Network connected" : "Network disconnected";
+    keyboardText.textContent = "ENG";
   }
 
   function applyBatteryState() {
+    const widget = document.getElementById("batteryWidget");
+    const maxFillWidth = 18;
     if (!batteryHandle) {
-      batteryText.textContent = "86%";
-      batteryLevel.setAttribute("width", "13");
+      batteryLevel.setAttribute("width", String(Math.round(maxFillWidth * 0.86)));
+      widget.classList.remove("battery-green", "battery-yellow", "battery-red");
+      widget.classList.add("battery-green");
       return;
     }
 
     const level = Math.round(batteryHandle.level * 100);
-    const width = Math.max(2, Math.round((level / 100) * 13));
-    batteryText.textContent = level + "%";
+    const width = Math.max(2, Math.round((level / 100) * maxFillWidth));
     batteryLevel.setAttribute("width", String(width));
-    document.getElementById("batteryWidget").title = batteryHandle.charging
+
+    widget.classList.remove("battery-green", "battery-yellow", "battery-red");
+    if (level > 50) {
+      widget.classList.add("battery-green");
+    } else if (level > 20) {
+      widget.classList.add("battery-yellow");
+    } else {
+      widget.classList.add("battery-red");
+    }
+
+    widget.title = batteryHandle.charging
       ? "Battery charging"
       : "Battery";
   }
@@ -289,12 +293,6 @@
       closeQuitModal();
     }
 
-    addressBar.value = state.url || "";
-    addressBar.placeholder = state.examActive ? "" : "Exam URL will appear here";
-    appButtonLabel.textContent = state.examActive ? "Exam" : "SEB";
-    backBtn.disabled = !state.canGoBack;
-    forwardBtn.disabled = !state.canGoForward;
-    homeBtn.disabled = !state.startUrl;
     reloadBtn.disabled = !state.examActive;
     quitBtn.disabled = state.quitEnabled === false;
     loadingBar.classList.toggle("is-loading", !!state.isLoading);
@@ -328,15 +326,6 @@
   }
 
   function bindToolbarButtons() {
-    homeBtn.addEventListener("click", function () {
-      handleShellAction("go-home");
-    });
-    backBtn.addEventListener("click", function () {
-      handleShellAction("go-back");
-    });
-    forwardBtn.addEventListener("click", function () {
-      handleShellAction("go-forward");
-    });
     reloadBtn.addEventListener("click", function () {
       handleShellAction("reload");
     });
@@ -387,10 +376,7 @@
   function initializeWidgets() {
     updateClock();
     updateKeyboardWidget();
-    updateNetworkWidget();
     window.setInterval(updateClock, 1000);
-    window.addEventListener("online", updateNetworkWidget);
-    window.addEventListener("offline", updateNetworkWidget);
 
     if (navigator.getBattery) {
       navigator.getBattery().then(function (battery) {

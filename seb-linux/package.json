@@ -7,6 +7,7 @@
   "main": "src/main.js",
   "scripts": {
     "start": "electron .",
+    "dev": "electronmon .",
     "build:dir": "electron-builder --linux dir",
     "build:deb": "electron-builder --linux deb",
     "build:appimage": "electron-builder --linux AppImage"
@@ -14,6 +15,7 @@
   "build": {
     "appId": "org.safeexambrowser.seb-linux",
     "productName": "Safe Exam Browser",
+    "artifactName": "NSEB-v${version}.${ext}",
     "linux": {
       "target": ["AppImage", "deb", "rpm", "tar.gz"],
       "category": "Education",
@@ -26,6 +28,7 @@
   },
   "devDependencies": {
     "electron": "^33.0.0",
-    "electron-builder": "^25.0.0"
+    "electron-builder": "^25.0.0",
+    "electronmon": "^2.0.0"
   }
 }
