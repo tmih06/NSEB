@@ -17,18 +17,27 @@
     "productName": "Safe Exam Browser",
     "artifactName": "NSEB-v${version}.${ext}",
     "linux": {
-      "target": ["AppImage", "deb", "rpm", "tar.gz"],
+      "target": [
+        "AppImage",
+        "deb",
+        "rpm",
+        "tar.gz"
+      ],
       "category": "Education",
-      "mimeTypes": ["application/seb"]
+      "mimeTypes": [
+        "application/seb"
+      ]
     },
     "win": {
-      "target": ["portable"],
+      "target": [
+        "portable"
+      ],
       "icon": null
     }
   },
   "devDependencies": {
-    "electron": "^33.0.0",
-    "electron-builder": "^25.0.0",
+    "electron": "^42.2.0",
+    "electron-builder": "^26.8.1",
     "electronmon": "^2.0.0"
   }
 }
