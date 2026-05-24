@@ -20,12 +20,8 @@
       "mimeTypes": ["application/seb"]
     },
     "win": {
-      "target": ["portable", "nsis"],
+      "target": ["portable"],
       "icon": null
-    },
-    "protocols": {
-      "name": "SEB Config Link",
-      "schemes": ["seb"]
     }
   },
   "devDependencies": {

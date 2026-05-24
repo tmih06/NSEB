@@ -701,24 +701,15 @@ app.whenReady().then(async () => {
   let startUrl = null;
   let hasConfig = false;
 
-  const sebArg =
-    process.argv.find((arg) => arg.endsWith(".seb")) ||
-    process.argv.find((arg) => arg.startsWith("seb://"));
+  const sebArg = process.argv.find((arg) => arg.endsWith(".seb"));
 
   if (sebArg) {
-    if (sebArg.startsWith("seb://")) {
-      initialJoinUrl = decodeURIComponent(sebArg.replace(/^seb:\/\//, ""));
-    } else {
-      try {
-        const sebSession = await loadSessionFromConfigPath(sebArg);
-        startUrl = sebSession.startUrl;
-        hasConfig = true;
-      } catch (err) {
-        dialog.showErrorBox(
-          "SEB Config Error",
-          err.message,
-        );
-      }
+    try {
+      const sebSession = await loadSessionFromConfigPath(sebArg);
+      startUrl = sebSession.startUrl;
+      hasConfig = true;
+    } catch (err) {
+      dialog.showErrorBox("SEB Config Error", err.message);
     }
   }
 
@@ -732,8 +723,6 @@ app.whenReady().then(async () => {
   createMainWindow();
 });
 
-app.setAsDefaultProtocolClient("seb");
-
 app.on("before-quit", () => {
   clearServerPingTimer();
   if (sebServerClient) {
@@ -741,18 +730,6 @@ app.on("before-quit", () => {
       console.warn("[SEB] Failed to disconnect from SEB Server:", err.message);
     });
     sebServerClient = null;
-  }
-});
-
-app.on("open-url", (event, url) => {
-  event.preventDefault();
-
-  const targetUrl = decodeURIComponent(url.replace(/^seb:\/\//, ""));
-  if (appState.getSession()) {
-    launchExamTarget(targetUrl, isLocalExamTarget(targetUrl));
-  } else {
-    initialJoinUrl = targetUrl;
-    sendShellState();
   }
 });
 
