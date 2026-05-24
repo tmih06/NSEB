@@ -26,10 +26,7 @@ jobs:
 
       - name: Sync version from tag
         working-directory: seb-linux
-        run: |
-          TAG_VERSION="${{ github.ref_name }}"
-          TAG_VERSION="${TAG_VERSION#v}"
-          npm version "$TAG_VERSION" --no-git-tag-version --allow-same-version
+        run: node -e "const tag='${{ github.ref_name }}'.split('/').pop().replace(/^v/,'');require('child_process').execSync('npm version '+tag+' --no-git-tag-version --allow-same-version',{stdio:'inherit'})"
 
       - name: Install dependencies
         working-directory: seb-linux
