@@ -1,0 +1,42 @@
+name: Build & Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  build:
+    name: Build (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install dependencies
+        working-directory: seb-linux
+        run: npm ci
+
+      - name: Build (Linux)
+        if: runner.os == 'Linux'
+        working-directory: seb-linux
+        run: npx electron-builder --linux --publish=never
+
+      - name: Build (Windows)
+        if: runner.os == 'Windows'
+        working-directory: seb-linux
+        run: npx electron-builder --win --publish=never
+
+      - name: Upload artifacts to release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.ref_name }}
+          files: seb-linux/dist/*
+          fail_on_unmatched_files: false

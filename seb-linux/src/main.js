@@ -1,22 +1,28 @@
 const {
   app,
+  BrowserView,
   BrowserWindow,
-  ipcMain,
   dialog,
+  ipcMain,
 } = require("electron");
+const crypto = require("crypto");
 const fs = require("fs");
 const path = require("path");
-const crypto = require("crypto");
 const { SebSession } = require("./session");
 const { SebServerClient } = require("./serverClient");
 const configParser = require("./configParser");
 const appState = require("./appState");
 
 let mainWindow = null;
+let examView = null;
 let sebHeadersInstalled = false;
+let sebHeaderSession = null;
 let sebServerClient = null;
 let sebServerPingTimer = null;
 let initialJoinUrl = null;
+let pendingStartupTarget = null;
+let shellLoaded = false;
+
 // SEB-Server instruction-confirm IDs that still need to be acknowledged on the
 // next ping. Mirrors `instructionConfirmations` queue in
 // seb-win-refactoring/SafeExamBrowser.Server/ServerProxy.cs.
@@ -25,6 +31,10 @@ const pendingInstructionConfirms = [];
 const SEB_REQUEST_HASH = "X-SafeExamBrowser-RequestHash";
 const SEB_CONFIG_KEY_HASH = "X-SafeExamBrowser-ConfigKeyHash";
 const ENCRYPTED_SEB_PREFIXES = configParser.ENCRYPTED_BLOCK_PREFIXES;
+const SHELL_HTML_PATH = path.join(__dirname, "shell.html");
+const SHELL_TOOLBAR_HEIGHT = 42;
+const SHELL_TASKBAR_HEIGHT = 40;
+const SHELL_MIN_CONTENT_HEIGHT = 120;
 
 // SEB-Server ping instruction names. Names match the canonical strings sent by
 // seb-server (see ch.ethz.seb.sebserver…ClientInstruction*) and consumed by
@@ -33,13 +43,12 @@ const INSTRUCTION_QUIT = "SEB_QUIT";
 const INSTRUCTION_LOCK_SCREEN = "SEB_FORCE_LOCK_SCREEN";
 const INSTRUCTION_NOTIFICATION_CONFIRM = "NOTIFICATION_CONFIRM";
 
-function installSebHeaders() {
-  if (sebHeadersInstalled || !mainWindow) return;
-  const filter = { urls: ["*://*/*"] };
-  const winContents = mainWindow.webContents;
-  if (!winContents || !winContents.session) return;
+function installSebHeaders(webContents) {
+  if (!webContents || !webContents.session) return;
+  if (sebHeadersInstalled && sebHeaderSession === webContents.session) return;
 
-  winContents.session.webRequest.onBeforeSendHeaders(
+  const filter = { urls: ["*://*/*"] };
+  webContents.session.webRequest.onBeforeSendHeaders(
     filter,
     (details, callback) => {
       const sebSession = appState.getSession();
@@ -58,12 +67,14 @@ function installSebHeaders() {
   );
 
   sebHeadersInstalled = true;
+  sebHeaderSession = webContents.session;
 }
 
-function createMainWindow(startUrl, isLocalFile = false) {
+function createMainWindow() {
   mainWindow = new BrowserWindow({
     width: 1280,
     height: 800,
+    backgroundColor: "#f0f0f0",
     fullscreen: true,
     frame: false,
     kiosk: false,
@@ -73,21 +84,286 @@ function createMainWindow(startUrl, isLocalFile = false) {
       nodeIntegration: false,
       sandbox: false,
     },
-    title: "Safe Exam Browser - Linux",
+    title: "Safe Exam Browser",
   });
 
   mainWindow.setMenuBarVisibility(false);
-  installSebHeaders();
+  mainWindow.loadFile(SHELL_HTML_PATH);
 
-  if (isLocalFile) {
-    mainWindow.loadFile(startUrl);
-  } else {
-    mainWindow.loadURL(startUrl || "about:blank");
-  }
+  mainWindow.webContents.on("did-finish-load", () => {
+    shellLoaded = true;
+    sendShellState();
 
+    if (pendingStartupTarget) {
+      const target = pendingStartupTarget;
+      pendingStartupTarget = null;
+      loadExamTarget(target.url, target.isLocalFile).catch((err) => {
+        dialog.showErrorBox("SEB Browser Error", err.message);
+      });
+    }
+  });
+
+  mainWindow.on("resize", updateExamViewBounds);
+  mainWindow.on("enter-full-screen", updateExamViewBounds);
+  mainWindow.on("leave-full-screen", updateExamViewBounds);
+  mainWindow.on("close", () => {
+    shellLoaded = false;
+    disposeExamView();
+  });
   mainWindow.on("closed", () => {
     mainWindow = null;
   });
+}
+
+function disposeExamView() {
+  if (!examView) return;
+
+  const view = examView;
+  examView = null;
+
+  if (mainWindow && !mainWindow.isDestroyed()) {
+    try {
+      mainWindow.setBrowserView(null);
+    } catch {
+      try {
+        mainWindow.removeBrowserView(view);
+      } catch {
+        // Ignore stale detach attempts during shutdown.
+      }
+    }
+  }
+
+  const webContents = view.webContents;
+  if (webContents && !webContents.isDestroyed()) {
+    // Navigate away first so Wayland surfaces are released before Chromium
+    // tears the BrowserView down during app shutdown.
+    webContents.loadURL("about:blank").catch(() => {});
+    webContents.close({ waitForBeforeUnload: false });
+    if (!webContents.isDestroyed()) {
+      webContents.destroy();
+    }
+  }
+
+  sendShellState();
+}
+
+function updateExamViewBounds() {
+  if (!mainWindow || !examView) return;
+
+  const [width, height] = mainWindow.getContentSize();
+  const contentHeight = Math.max(
+    SHELL_MIN_CONTENT_HEIGHT,
+    height - SHELL_TOOLBAR_HEIGHT - SHELL_TASKBAR_HEIGHT,
+  );
+
+  examView.setBounds({
+    x: 0,
+    y: SHELL_TOOLBAR_HEIGHT,
+    width,
+    height: contentHeight,
+  });
+  examView.setAutoResize({ width: true, height: true });
+}
+
+function wireExamViewEvents(webContents) {
+  const syncState = () => sendShellState();
+
+  webContents.on("did-start-loading", syncState);
+  webContents.on("did-stop-loading", syncState);
+  webContents.on("did-navigate", syncState);
+  webContents.on("did-navigate-in-page", syncState);
+  webContents.on("page-title-updated", syncState);
+  webContents.on("render-process-gone", syncState);
+
+  webContents.setWindowOpenHandler(({ url }) => {
+    setImmediate(() => {
+      if (!examView || examView.webContents.isDestroyed()) return;
+      examView.webContents.loadURL(url).catch((err) => {
+        console.warn("[SEB] Failed to open popup URL in current exam view:", err.message);
+      });
+    });
+
+    return { action: "deny" };
+  });
+}
+
+function ensureExamView() {
+  if (examView) {
+    if (mainWindow && !mainWindow.isDestroyed()) {
+      mainWindow.setBrowserView(examView);
+      updateExamViewBounds();
+    }
+    return examView;
+  }
+
+  examView = new BrowserView({
+    webPreferences: {
+      contextIsolation: true,
+      nodeIntegration: false,
+      sandbox: false,
+    },
+  });
+
+  installSebHeaders(examView.webContents);
+  wireExamViewEvents(examView.webContents);
+
+  if (mainWindow && !mainWindow.isDestroyed()) {
+    mainWindow.setBrowserView(examView);
+    updateExamViewBounds();
+  }
+
+  return examView;
+}
+
+function getExamWebContents() {
+  if (!examView || !examView.webContents || examView.webContents.isDestroyed()) {
+    return null;
+  }
+
+  return examView.webContents;
+}
+
+function getNavigationHistory(webContents) {
+  if (!webContents || webContents.isDestroyed()) return null;
+  return webContents.navigationHistory || null;
+}
+
+function canNavigateBack(webContents) {
+  const history = getNavigationHistory(webContents);
+  return history ? history.canGoBack() : !!(webContents && webContents.canGoBack());
+}
+
+function canNavigateForward(webContents) {
+  const history = getNavigationHistory(webContents);
+  return history ? history.canGoForward() : !!(webContents && webContents.canGoForward());
+}
+
+function navigateBack(webContents) {
+  if (!webContents) return;
+
+  const history = getNavigationHistory(webContents);
+  if (history) {
+    history.goBack();
+    return;
+  }
+
+  if (webContents.canGoBack()) {
+    webContents.goBack();
+  }
+}
+
+function navigateForward(webContents) {
+  if (!webContents) return;
+
+  const history = getNavigationHistory(webContents);
+  if (history) {
+    history.goForward();
+    return;
+  }
+
+  if (webContents.canGoForward()) {
+    webContents.goForward();
+  }
+}
+
+function isLocalExamTarget(target) {
+  if (!target || typeof target !== "string") return false;
+  if (target.startsWith("file://")) return true;
+  if (/^[a-z]+:\/\//i.test(target)) return false;
+  return fs.existsSync(target);
+}
+
+function buildShellState() {
+  const sebSession = appState.getSession();
+  const webContents = getExamWebContents();
+  const examActive = !!webContents;
+  const hasQuitPassword = !!(
+    sebSession &&
+    sebSession.quitPassword &&
+    sebSession.quitPassword.length > 0
+  );
+  const allowQuit = sebSession ? !!sebSession.allowQuit : true;
+  const requiresQuitPassword = examActive && hasQuitPassword;
+  const quitEnabled = examActive ? (allowQuit || requiresQuitPassword) : true;
+
+  return {
+    examActive,
+    url: webContents ? webContents.getURL() : "",
+    title: webContents ? webContents.getTitle() || "Safe Exam Browser" : "Safe Exam Browser",
+    canGoBack: canNavigateBack(webContents),
+    canGoForward: canNavigateForward(webContents),
+    isLoading: webContents ? webContents.isLoading() : false,
+    joinUrl: initialJoinUrl,
+    startUrl: sebSession ? sebSession.startUrl : null,
+    allowQuit,
+    requiresQuitPassword,
+    quitEnabled,
+  };
+}
+
+function sendShellState() {
+  if (!shellLoaded || !mainWindow || mainWindow.isDestroyed()) return;
+  if (!mainWindow.webContents || mainWindow.webContents.isDestroyed()) return;
+  mainWindow.webContents.send("shell-state", buildShellState());
+}
+
+async function loadExamTarget(target, isLocalFile = false) {
+  const view = ensureExamView();
+
+  if (isLocalFile) {
+    if (target.startsWith("file://")) {
+      await view.webContents.loadURL(target);
+    } else {
+      await view.webContents.loadFile(target);
+    }
+  } else {
+    await view.webContents.loadURL(target || "about:blank");
+  }
+
+  sendShellState();
+}
+
+function launchExamTarget(target, isLocalFile = false) {
+  if (!mainWindow || mainWindow.isDestroyed()) return;
+
+  if (!shellLoaded) {
+    pendingStartupTarget = { url: target, isLocalFile };
+    return;
+  }
+
+  loadExamTarget(target, isLocalFile).catch((err) => {
+    dialog.showErrorBox("SEB Browser Error", err.message);
+  });
+}
+
+async function runShellAction(action) {
+  const webContents = getExamWebContents();
+  const sebSession = appState.getSession();
+
+  if (!webContents) {
+    return buildShellState();
+  }
+
+  switch (action) {
+    case "go-home":
+      if (sebSession && sebSession.startUrl) {
+        await loadExamTarget(sebSession.startUrl, isLocalExamTarget(sebSession.startUrl));
+      }
+      break;
+    case "go-back":
+      navigateBack(webContents);
+      break;
+    case "go-forward":
+      navigateForward(webContents);
+      break;
+    case "reload":
+      webContents.reload();
+      break;
+    default:
+      break;
+  }
+
+  return buildShellState();
 }
 
 function getSebPrefix(buffer) {
@@ -118,7 +394,7 @@ function handleServerInstruction(instruction) {
 
   switch (name) {
     case INSTRUCTION_QUIT:
-      console.log("[SEB] SEB Server requested termination — quitting.");
+      console.log("[SEB] SEB Server requested termination - quitting.");
       // Defer to next tick so the confirm gets queued onto the next ping.
       setImmediate(() => app.quit());
       break;
@@ -132,7 +408,7 @@ function handleServerInstruction(instruction) {
       );
       break;
     case INSTRUCTION_NOTIFICATION_CONFIRM:
-      // Server-side ack of a notification we previously raised — nothing to do.
+      // Server-side ack of a notification we previously raised - nothing to do.
       break;
     default:
       if (name) {
@@ -197,8 +473,8 @@ function pickServerStartUrl(exam) {
   // seb-server returns the start URL on the exam record under `url`. Older
   // builds and seb-mac/seb-win parsers also accept `startURL` / `startUrl`.
   for (const key of ["url", "startURL", "startUrl"]) {
-    const v = exam[key];
-    if (typeof v === "string" && v.length > 0) return v;
+    const value = exam[key];
+    if (typeof value === "string" && value.length > 0) return value;
   }
   return null;
 }
@@ -333,16 +609,14 @@ async function promptForConfigImport() {
   }
 
   const sebSession = await loadSessionFromConfigPath(result.filePaths[0]);
-  if (mainWindow) {
-    mainWindow.loadURL(sebSession.startUrl);
-  }
+  launchExamTarget(sebSession.startUrl, isLocalExamTarget(sebSession.startUrl));
 
   return { success: true, startUrl: sebSession.startUrl };
 }
 
 ipcMain.handle("get-url", () => {
-  if (mainWindow) return mainWindow.webContents.getURL();
-  return "";
+  const webContents = getExamWebContents();
+  return webContents ? webContents.getURL() : "";
 });
 
 ipcMain.handle("log", (_, msg) => {
@@ -351,7 +625,9 @@ ipcMain.handle("log", (_, msg) => {
 
 ipcMain.handle("try-quit", (_, password) => {
   const sebSession = appState.getSession();
-  if (!sebSession) {
+  const examActive = !!getExamWebContents();
+
+  if (!sebSession || !examActive) {
     app.quit();
     return true;
   }
@@ -375,16 +651,18 @@ ipcMain.handle("try-quit", (_, password) => {
 });
 
 ipcMain.handle("get-config-key", () => {
-  const s = appState.getSession();
-  return s ? s.configKey : null;
+  const session = appState.getSession();
+  return session ? session.configKey : null;
 });
 
 ipcMain.handle("get-browser-exam-key", () => {
-  const s = appState.getSession();
-  return s ? s.browserExamKey : null;
+  const session = appState.getSession();
+  return session ? session.browserExamKey : null;
 });
 
 ipcMain.handle("get-join-url", () => initialJoinUrl);
+ipcMain.handle("get-shell-state", () => buildShellState());
+ipcMain.handle("shell-action", (_, action) => runShellAction(action));
 
 ipcMain.handle("submit-join-exam", (_, data) => {
   try {
@@ -397,9 +675,8 @@ ipcMain.handle("submit-join-exam", (_, data) => {
     session.loadFromManualEntry({ startUrl, browserExamKey, quitPassword });
     appState.setSession(session);
 
-    if (mainWindow) {
-      mainWindow.loadURL(startUrl);
-    }
+    launchExamTarget(startUrl, isLocalExamTarget(startUrl));
+    sendShellState();
 
     console.log("[SEB] Joined exam via manual entry. Start URL:", startUrl);
     if (browserExamKey) {
@@ -425,8 +702,8 @@ app.whenReady().then(async () => {
   let hasConfig = false;
 
   const sebArg =
-    process.argv.find((a) => a.endsWith(".seb")) ||
-    process.argv.find((a) => a.startsWith("seb://"));
+    process.argv.find((arg) => arg.endsWith(".seb")) ||
+    process.argv.find((arg) => arg.startsWith("seb://"));
 
   if (sebArg) {
     if (sebArg.startsWith("seb://")) {
@@ -446,10 +723,13 @@ app.whenReady().then(async () => {
   }
 
   if (hasConfig) {
-    createMainWindow(startUrl);
-  } else {
-    createMainWindow(path.join(__dirname, "join.html"), true);
+    pendingStartupTarget = {
+      url: startUrl,
+      isLocalFile: isLocalExamTarget(startUrl),
+    };
   }
+
+  createMainWindow();
 });
 
 app.setAsDefaultProtocolClient("seb");
@@ -466,14 +746,13 @@ app.on("before-quit", () => {
 
 app.on("open-url", (event, url) => {
   event.preventDefault();
-  if (mainWindow) {
-    const targetUrl = url.replace(/^seb:\/\//, "");
-    if (appState.getSession()) {
-      mainWindow.loadURL(targetUrl);
-    } else {
-      initialJoinUrl = targetUrl;
-      mainWindow.loadFile(path.join(__dirname, "join.html"));
-    }
+
+  const targetUrl = decodeURIComponent(url.replace(/^seb:\/\//, ""));
+  if (appState.getSession()) {
+    launchExamTarget(targetUrl, isLocalExamTarget(targetUrl));
+  } else {
+    initialJoinUrl = targetUrl;
+    sendShellState();
   }
 });
 
@@ -483,6 +762,13 @@ app.on("window-all-closed", () => {
 
 app.on("activate", () => {
   if (BrowserWindow.getAllWindows().length === 0) {
-    createMainWindow(path.join(__dirname, "join.html"), true);
+    const session = appState.getSession();
+    if (session && session.startUrl) {
+      pendingStartupTarget = {
+        url: session.startUrl,
+        isLocalFile: isLocalExamTarget(session.startUrl),
+      };
+    }
+    createMainWindow();
   }
 });

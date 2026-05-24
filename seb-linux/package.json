@@ -13,9 +13,13 @@
     "appId": "org.safeexambrowser.seb-linux",
     "productName": "Safe Exam Browser",
     "linux": {
-      "target": ["AppImage", "deb"],
+      "target": ["AppImage", "deb", "rpm", "tar.gz"],
       "category": "Education",
       "mimeTypes": ["application/seb"]
+    },
+    "win": {
+      "target": ["portable", "nsis"],
+      "icon": null
     },
     "protocols": {
       "name": "SEB Config Link",
@@ -24,5 +28,8 @@
   },
   "dependencies": {
     "electron": "^33.0.0"
+  },
+  "devDependencies": {
+    "electron-builder": "^25.0.0"
   }
 }

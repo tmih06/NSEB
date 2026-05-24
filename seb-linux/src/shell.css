@@ -1,0 +1,538 @@
+:root {
+  --seb-bg: #f0f0f0;
+  --seb-panel: #ffffff;
+  --seb-border: #d3d3d3;
+  --seb-border-strong: #c1c1c1;
+  --seb-text: #151515;
+  --seb-muted: #666666;
+  --seb-hover: #dff1ff;
+  --seb-hover-border: #1e90ff;
+  --seb-active: #cfeaff;
+  --seb-blue: #1e90ff;
+  --seb-danger: #c94d3f;
+  --seb-danger-hover: #b84235;
+  --seb-shadow: 0 12px 30px rgba(0, 0, 0, 0.1);
+  --toolbar-height: 42px;
+  --taskbar-height: 40px;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+[hidden] {
+  display: none !important;
+}
+
+html,
+body {
+  margin: 0;
+  min-height: 100%;
+  overflow: hidden;
+  background: var(--seb-bg);
+  color: var(--seb-text);
+  font-family: "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+  user-select: none;
+}
+
+button,
+input {
+  font: inherit;
+}
+
+button {
+  border: 0;
+  background: transparent;
+  color: inherit;
+}
+
+.shell {
+  height: 100vh;
+  display: grid;
+  grid-template-rows: var(--toolbar-height) 1fr var(--taskbar-height);
+  background: var(--seb-bg);
+}
+
+.toolbar {
+  position: relative;
+  background: var(--seb-bg);
+  border-bottom: 1px solid var(--seb-border);
+  padding: 0 5px;
+}
+
+.toolbar-main {
+  height: 100%;
+  display: grid;
+  grid-template-columns: auto auto auto auto 1fr auto;
+  align-items: center;
+  gap: 4px;
+}
+
+.toolbar-button {
+  width: 30px;
+  height: 30px;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: background-color 120ms ease, border-color 120ms ease, opacity 120ms ease;
+}
+
+.toolbar-button:hover:not(:disabled),
+.taskbar-app:hover,
+.taskbar-icon:hover,
+.taskbar-widget:hover,
+.taskbar-quit:hover:not(:disabled),
+.menu-item:hover,
+.primary-action:hover,
+.secondary-action:hover {
+  background: var(--seb-hover);
+  border-color: var(--seb-hover-border);
+}
+
+.toolbar-button:active:not(:disabled),
+.taskbar-app:active,
+.taskbar-icon:active,
+.taskbar-widget:active,
+.taskbar-quit:active:not(:disabled) {
+  background: var(--seb-active);
+}
+
+.toolbar-button:disabled,
+.taskbar-quit:disabled {
+  cursor: default;
+  opacity: 0.3;
+}
+
+.toolbar-button img {
+  width: 18px;
+  height: 18px;
+  object-fit: contain;
+}
+
+.toolbar-brand img {
+  width: 20px;
+  height: 20px;
+}
+
+.address-wrap {
+  min-width: 0;
+}
+
+.address-wrap input {
+  width: 100%;
+  height: 25px;
+  padding: 0 10px;
+  border: 1px solid var(--seb-border-strong);
+  border-radius: 4px;
+  background: #ffffff;
+  color: #343434;
+}
+
+.address-wrap input:focus {
+  outline: 1px solid var(--seb-blue);
+  outline-offset: 0;
+}
+
+.toolbar-menu-wrap {
+  position: relative;
+}
+
+.toolbar-menu-button {
+  gap: 3px;
+  flex-direction: column;
+}
+
+.toolbar-menu-button span {
+  width: 14px;
+  height: 2px;
+  border-radius: 999px;
+  background: #4b4b4b;
+}
+
+.toolbar-menu {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  min-width: 210px;
+  padding: 6px;
+  border: 1px solid var(--seb-border);
+  border-radius: 6px;
+  background: #ffffff;
+  box-shadow: var(--seb-shadow);
+  z-index: 30;
+}
+
+.menu-item {
+  width: 100%;
+  padding: 9px 10px;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  text-align: left;
+  cursor: pointer;
+}
+
+.loading-bar {
+  position: absolute;
+  left: 5px;
+  right: 5px;
+  bottom: -1px;
+  height: 2px;
+  overflow: hidden;
+}
+
+.loading-bar::before {
+  content: "";
+  display: block;
+  width: 0;
+  height: 100%;
+  background: var(--seb-blue);
+  opacity: 0;
+  transition: opacity 100ms ease;
+}
+
+.loading-bar.is-loading::before {
+  width: 48%;
+  opacity: 1;
+  animation: loading-pulse 1.15s ease-in-out infinite;
+}
+
+@keyframes loading-pulse {
+  0% {
+    margin-left: 0;
+    width: 16%;
+  }
+  50% {
+    margin-left: 28%;
+    width: 48%;
+  }
+  100% {
+    margin-left: 84%;
+    width: 16%;
+  }
+}
+
+.content-area {
+  position: relative;
+  overflow: hidden;
+  background: #ffffff;
+}
+
+.content-backdrop {
+  position: absolute;
+  inset: 0;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.96), rgba(246, 246, 246, 0.9)),
+    radial-gradient(circle at top left, rgba(30, 144, 255, 0.08), transparent 35%);
+}
+
+.join-panel {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: 32px;
+  z-index: 1;
+}
+
+.join-card {
+  width: min(760px, 100%);
+  padding: 32px;
+  border: 1px solid var(--seb-border);
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.96);
+  box-shadow: var(--seb-shadow);
+}
+
+.join-header {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  margin-bottom: 24px;
+}
+
+.join-logo {
+  width: 64px;
+  height: 64px;
+  object-fit: contain;
+  flex: 0 0 auto;
+}
+
+.join-header h1 {
+  margin: 0 0 8px;
+  font-size: 30px;
+  font-weight: 600;
+}
+
+.join-header p {
+  margin: 0;
+  color: var(--seb-muted);
+  line-height: 1.5;
+}
+
+.field {
+  display: block;
+  margin-bottom: 16px;
+}
+
+.field span {
+  display: block;
+  margin-bottom: 7px;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.field input {
+  width: 100%;
+  height: 42px;
+  padding: 0 12px;
+  border: 1px solid var(--seb-border-strong);
+  border-radius: 6px;
+  background: #ffffff;
+  color: var(--seb-text);
+  user-select: text;
+}
+
+.field input:focus {
+  outline: 1px solid var(--seb-blue);
+  outline-offset: 0;
+}
+
+.field small {
+  display: block;
+  margin-top: 6px;
+  color: var(--seb-muted);
+  line-height: 1.4;
+}
+
+.form-error,
+.modal-error,
+.toast {
+  padding: 10px 12px;
+  border: 1px solid rgba(201, 77, 63, 0.25);
+  border-radius: 6px;
+  background: rgba(201, 77, 63, 0.1);
+  color: #922f24;
+}
+
+.form-error {
+  margin-bottom: 16px;
+}
+
+.join-actions,
+.modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 24px;
+}
+
+.primary-action,
+.secondary-action {
+  min-width: 150px;
+  height: 40px;
+  padding: 0 16px;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background-color 120ms ease, border-color 120ms ease;
+}
+
+.primary-action {
+  background: var(--seb-danger);
+  color: #ffffff;
+}
+
+.primary-action:hover {
+  background: var(--seb-danger-hover);
+  border-color: var(--seb-danger-hover);
+}
+
+.secondary-action {
+  background: #f8f8f8;
+  border-color: var(--seb-border);
+}
+
+.primary-action:disabled,
+.secondary-action:disabled {
+  opacity: 0.55;
+  cursor: default;
+}
+
+.shell[data-mode="exam"] .join-panel {
+  display: none;
+}
+
+.taskbar {
+  display: grid;
+  grid-template-columns: minmax(160px, 1fr) auto auto auto auto;
+  align-items: stretch;
+  border-top: 1px solid var(--seb-border);
+  background: var(--seb-bg);
+}
+
+.taskbar-section {
+  display: flex;
+  align-items: stretch;
+}
+
+.taskbar-app,
+.taskbar-icon,
+.taskbar-widget,
+.taskbar-quit {
+  height: 100%;
+  border: 1px solid transparent;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: background-color 120ms ease, border-color 120ms ease;
+}
+
+.taskbar-app {
+  min-width: 84px;
+  gap: 8px;
+  padding: 0 14px;
+}
+
+.taskbar-app img {
+  width: 18px;
+  height: 18px;
+  object-fit: contain;
+}
+
+.taskbar-app span {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.taskbar-icon {
+  width: 40px;
+}
+
+.taskbar-icon img,
+.taskbar-quit img {
+  width: 18px;
+  height: 18px;
+  object-fit: contain;
+}
+
+.taskbar-widget {
+  min-width: 40px;
+  gap: 7px;
+  padding: 0 10px;
+}
+
+.taskbar-widget svg {
+  width: 18px;
+  height: 18px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.taskbar-widget span {
+  font-size: 12px;
+  color: var(--seb-muted);
+}
+
+.taskbar-battery {
+  min-width: 74px;
+}
+
+.taskbar-battery .battery-level {
+  fill: currentColor;
+  stroke: none;
+}
+
+.taskbar-keyboard {
+  min-width: 48px;
+  font-weight: 600;
+}
+
+.taskbar-clock {
+  display: inline-flex;
+  align-items: center;
+  padding: 0 12px;
+  color: var(--seb-muted);
+  white-space: nowrap;
+}
+
+.taskbar-quit {
+  width: 46px;
+  background: var(--seb-bg);
+}
+
+.taskbar-quit img {
+  width: 19px;
+  height: 19px;
+}
+
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.25);
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  z-index: 40;
+}
+
+.modal-card {
+  width: min(420px, 100%);
+  padding: 24px;
+  border: 1px solid var(--seb-border);
+  border-radius: 12px;
+  background: #ffffff;
+  box-shadow: var(--seb-shadow);
+}
+
+.modal-card h2 {
+  margin: 0 0 10px;
+  font-size: 22px;
+  font-weight: 600;
+}
+
+.modal-card p {
+  margin: 0 0 16px;
+  color: var(--seb-muted);
+  line-height: 1.5;
+}
+
+.modal-error {
+  margin-top: 12px;
+}
+
+.toast {
+  position: fixed;
+  right: 18px;
+  bottom: 56px;
+  max-width: 320px;
+  box-shadow: var(--seb-shadow);
+  z-index: 50;
+}
+
+@media (max-width: 900px) {
+  .join-card {
+    padding: 24px;
+  }
+
+  .join-header {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .taskbar {
+    grid-template-columns: minmax(110px, 1fr) auto auto auto;
+  }
+
+  .taskbar-app span,
+  .taskbar-clock {
+    font-size: 12px;
+  }
+}

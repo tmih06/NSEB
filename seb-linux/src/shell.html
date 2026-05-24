@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Safe Exam Browser</title>
+<link rel="stylesheet" href="./shell.css">
+</head>
+<body>
+<div class="shell" data-mode="join" id="shellRoot">
+  <header class="toolbar">
+    <div class="toolbar-main">
+      <button class="toolbar-button toolbar-brand" id="homeBtn" type="button" title="Back to Start">
+        <img src="./assets/seb-dock.png" alt="">
+      </button>
+      <button class="toolbar-button" id="backBtn" type="button" title="Back">
+        <img src="./assets/seb-back.png" alt="">
+      </button>
+      <button class="toolbar-button" id="forwardBtn" type="button" title="Forward">
+        <img src="./assets/seb-forward.png" alt="">
+      </button>
+      <button class="toolbar-button" id="reloadBtn" type="button" title="Reload">
+        <img src="./assets/seb-reload.png" alt="">
+      </button>
+      <div class="address-wrap">
+        <input id="addressBar" type="text" readonly value="" aria-label="Current URL">
+      </div>
+      <div class="toolbar-menu-wrap">
+        <button class="toolbar-button toolbar-menu-button" id="menuBtn" type="button" aria-expanded="false" title="Menu">
+          <span></span>
+          <span></span>
+          <span></span>
+        </button>
+        <div class="toolbar-menu" id="toolbarMenu" hidden>
+          <button class="menu-item" data-action="go-home" type="button">Open Start Page</button>
+          <button class="menu-item" data-action="reload" type="button">Reload Page</button>
+          <button class="menu-item" data-action="quit" type="button">Quit Safe Exam Browser</button>
+        </div>
+      </div>
+    </div>
+    <div class="loading-bar" id="loadingBar"></div>
+  </header>
+
+  <main class="content-area" id="contentArea">
+    <div class="content-backdrop"></div>
+
+    <section class="join-panel" id="joinPanel" aria-labelledby="joinTitle">
+      <div class="join-card">
+        <div class="join-header">
+          <img class="join-logo" src="./assets/seb-dock.png" alt="">
+          <div>
+            <h1 id="joinTitle">Safe Exam Browser</h1>
+            <p>Enter the exam data provided by your institution or import an SEB configuration file.</p>
+          </div>
+        </div>
+
+        <div class="form-error" id="formError" hidden></div>
+
+        <label class="field">
+          <span>Exam / Start URL</span>
+          <input type="text" id="startUrl" autocomplete="off" placeholder="https://lms.example.com/mod/quiz/view.php?id=123">
+        </label>
+
+        <label class="field">
+          <span>Browser Exam Key</span>
+          <input type="text" id="browserExamKey" autocomplete="off" maxlength="64" placeholder="64-character hex string">
+          <small>Leave this empty if your exam organizer does not require it.</small>
+        </label>
+
+        <div class="join-actions">
+          <button class="secondary-action" id="importBtn" type="button">Import .seb File</button>
+          <button class="primary-action" id="joinBtn" type="button">Start Exam</button>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="taskbar">
+    <div class="taskbar-section taskbar-apps">
+      <button class="taskbar-app" id="appButton" type="button" title="Safe Exam Browser">
+        <img src="./assets/seb-dock.png" alt="">
+        <span id="appButtonLabel">Exam</span>
+      </button>
+    </div>
+
+    <div class="taskbar-section taskbar-notifications">
+      <button class="taskbar-icon" type="button" title="Raise hand">
+        <img src="./assets/seb-raise-hand.png" alt="">
+      </button>
+      <button class="taskbar-icon" type="button" title="Screen proctoring">
+        <img src="./assets/seb-proctoring.png" alt="">
+      </button>
+      <button class="taskbar-icon" type="button" title="QR code">
+        <img src="./assets/seb-qr.png" alt="">
+      </button>
+    </div>
+
+    <div class="taskbar-section taskbar-system">
+      <button class="taskbar-widget" id="audioWidget" type="button" title="Audio">
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M5 9v6h4l5 4V5L9 9H5z"></path>
+          <path d="M16 9a4 4 0 010 6"></path>
+          <path d="M18.8 6.2a8 8 0 010 11.6"></path>
+        </svg>
+      </button>
+
+      <button class="taskbar-widget" id="networkWidget" type="button" title="Network">
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M2.8 8.8A15.5 15.5 0 0112 5.5a15.5 15.5 0 019.2 3.3"></path>
+          <path d="M6.2 12.1A10.5 10.5 0 0112 10.3a10.5 10.5 0 015.8 1.8"></path>
+          <path d="M9.5 15.3a5.3 5.3 0 015 0"></path>
+          <circle cx="12" cy="18.4" r="1.3"></circle>
+        </svg>
+      </button>
+
+      <button class="taskbar-widget taskbar-battery" id="batteryWidget" type="button" title="Battery">
+        <svg viewBox="0 0 28 24" aria-hidden="true">
+          <rect x="2.5" y="6.5" width="20" height="11" rx="2"></rect>
+          <rect x="23.5" y="10" width="2" height="4" rx="1"></rect>
+          <rect class="battery-level" id="batteryLevel" x="5" y="9" width="13" height="6" rx="1"></rect>
+        </svg>
+        <span id="batteryText">86%</span>
+      </button>
+
+      <button class="taskbar-widget taskbar-keyboard" id="keyboardWidget" type="button" title="Keyboard layout">
+        <span id="keyboardText">EN</span>
+      </button>
+    </div>
+
+    <div class="taskbar-clock" id="clockWidget" aria-live="off"></div>
+
+    <button class="taskbar-quit" id="quitBtn" type="button" title="Quit Safe Exam Browser">
+      <img src="./assets/seb-shutdown.png" alt="">
+    </button>
+  </footer>
+</div>
+
+<div class="modal-backdrop" id="quitModal" hidden>
+  <div class="modal-card">
+    <h2>Quit Safe Exam Browser</h2>
+    <p id="quitModalText">Enter the quit password to close the exam session.</p>
+    <label class="field">
+      <span>Quit Password</span>
+      <input type="password" id="quitModalPassword" autocomplete="off" placeholder="Quit password">
+    </label>
+    <div class="modal-error" id="quitModalError" hidden></div>
+    <div class="modal-actions">
+      <button class="secondary-action" id="cancelQuitBtn" type="button">Cancel</button>
+      <button class="primary-action" id="confirmQuitBtn" type="button">Quit</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast" hidden></div>
+
+<script src="./shell.js"></script>
+</body>
+</html>
