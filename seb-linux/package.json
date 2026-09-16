@@ -33,6 +33,13 @@
         "portable"
       ],
       "icon": null
+    },
+    "mac": {
+      "target": [
+        "dmg",
+        "zip"
+      ],
+      "category": "public.app-category.education"
     }
   },
   "devDependencies": {

@@ -15,7 +15,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, windows-latest]
+        os: [ubuntu-latest, windows-latest, macos-latest]
 
     steps:
       - uses: actions/checkout@v4
@@ -41,6 +41,11 @@ jobs:
         if: runner.os == 'Windows'
         working-directory: seb-linux
         run: npx electron-builder --win --publish=never
+
+      - name: Build (macOS)
+        if: runner.os == 'macOS'
+        working-directory: seb-linux
+        run: npx electron-builder --mac --publish=never
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
