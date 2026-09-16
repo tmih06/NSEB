@@ -15,6 +15,9 @@ require() { command -v "$1" >/dev/null 2>&1 || err "missing required command: $1
 
 require curl
 
+TMP_DIR=""
+trap 'rm -rf "$TMP_DIR"' EXIT
+
 # Fetch download URL for a given asset extension (e.g. ".deb").
 asset_url() {
     curl -fsSL "$API_URL" \
@@ -30,31 +33,29 @@ download() {
 }
 
 install_linux() {
-    local tmp
-    tmp="$(mktemp -d)"
-    trap 'rm -rf "$tmp"' EXIT
+    TMP_DIR="$(mktemp -d)"
 
     if command -v apt-get >/dev/null 2>&1; then
         local url
         url="$(asset_url '\.deb')"
         [ -n "$url" ] || err "no .deb asset found in latest release"
-        download "$url" "$tmp/nseb.deb"
+        download "$url" "$TMP_DIR/nseb.deb"
         info "Installing .deb (sudo required)"
-        sudo apt-get install -y "$tmp/nseb.deb"
+        sudo apt-get install -y "$TMP_DIR/nseb.deb"
     elif command -v dnf >/dev/null 2>&1; then
         local url
         url="$(asset_url '\.rpm')"
         [ -n "$url" ] || err "no .rpm asset found in latest release"
-        download "$url" "$tmp/nseb.rpm"
+        download "$url" "$TMP_DIR/nseb.rpm"
         info "Installing .rpm (sudo required)"
-        sudo dnf install -y "$tmp/nseb.rpm"
+        sudo dnf install -y "$TMP_DIR/nseb.rpm"
     elif command -v yum >/dev/null 2>&1; then
         local url
         url="$(asset_url '\.rpm')"
         [ -n "$url" ] || err "no .rpm asset found in latest release"
-        download "$url" "$tmp/nseb.rpm"
+        download "$url" "$TMP_DIR/nseb.rpm"
         info "Installing .rpm (sudo required)"
-        sudo yum install -y "$tmp/nseb.rpm"
+        sudo yum install -y "$TMP_DIR/nseb.rpm"
     else
         # Fallback: AppImage into ~/.local/bin (no root needed).
         local url bin
@@ -76,16 +77,15 @@ install_linux() {
 }
 
 install_macos() {
-    local tmp url app_dir
-    tmp="$(mktemp -d)"
-    trap 'rm -rf "$tmp"' EXIT
+    TMP_DIR="$(mktemp -d)"
 
+    local url app_dir
     url="$(asset_url '\.zip')"
     [ -n "$url" ] || err "no .zip asset found in latest release"
-    download "$url" "$tmp/nseb.zip"
+    download "$url" "$TMP_DIR/nseb.zip"
 
     require unzip
-    unzip -q "$tmp/nseb.zip" -d "$tmp"
+    unzip -q "$TMP_DIR/nseb.zip" -d "$TMP_DIR"
 
     app_dir="/Applications"
     [ -w "$app_dir" ] || app_dir="${HOME}/Applications"
@@ -93,7 +93,7 @@ install_macos() {
 
     info "Installing ${APP_NAME}.app to $app_dir"
     rm -rf "$app_dir/${APP_NAME}.app"
-    cp -R "$tmp/${APP_NAME}.app" "$app_dir/"
+    cp -R "$TMP_DIR/${APP_NAME}.app" "$app_dir/"
 
     # Unsigned build: strip Gatekeeper quarantine so it can launch.
     xattr -dr com.apple.quarantine "$app_dir/${APP_NAME}.app" 2>/dev/null || true
