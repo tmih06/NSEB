@@ -11,7 +11,10 @@ $InstallDir = Join-Path $env:LOCALAPPDATA $AppName
 function Info($msg) { Write-Host "==> $msg" -ForegroundColor Cyan }
 
 # Find the .exe asset in the latest release.
-$release = Invoke-RestMethod -Uri $ApiUrl -Headers @{ 'User-Agent' = 'NSEB-Installer' }
+$headers = @{ 'User-Agent' = 'NSEB-Installer'; 'Accept' = 'application/vnd.github+json' }
+$token = if ($env:GH_TOKEN) { $env:GH_TOKEN } else { $env:GITHUB_TOKEN }
+if ($token) { $headers['Authorization'] = "Bearer $token" }
+$release = Invoke-RestMethod -Uri $ApiUrl -Headers $headers
 $asset = $release.assets | Where-Object { $_.name -like '*.exe' } | Select-Object -First 1
 if (-not $asset) { Write-Error 'No .exe asset found in the latest release.'; exit 1 }
 
