@@ -19,12 +19,17 @@ TMP_DIR=""
 trap 'rm -rf "$TMP_DIR"' EXIT
 
 # Fetch download URL for a given asset extension (e.g. ".deb").
+# Uses GH_TOKEN/GITHUB_TOKEN for auth when set (avoids API rate limits in CI).
 asset_url() {
-    curl -fsSL "$API_URL" \
+    local auth=()
+    local token="${GH_TOKEN:-${GITHUB_TOKEN:-}}"
+    [ -n "$token" ] && auth=(-H "Authorization: Bearer $token")
+    curl -fsSL "${auth[@]}" -H 'Accept: application/vnd.github+json' "$API_URL" \
         | grep -o '"browser_download_url": *"[^"]*'"$1"'"' \
         | head -1 \
         | sed 's/.*"\(http[^"]*\)"$/\1/'
 }
+
 
 download() {
     local url="$1" dest="$2"

@@ -85,6 +85,8 @@ jobs:
 
       - name: Run install script (Linux/macOS)
         if: runner.os != 'Windows'
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: bash scripts/install.sh
 
       - name: Run install script (Windows)
