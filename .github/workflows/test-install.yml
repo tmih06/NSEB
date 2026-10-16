@@ -5,12 +5,10 @@ on:
     branches: [main]
     paths:
       - 'scripts/install.sh'
-      - 'scripts/install.ps1'
       - '.github/workflows/test-install.yml'
   pull_request:
     paths:
       - 'scripts/install.sh'
-      - 'scripts/install.ps1'
       - '.github/workflows/test-install.yml'
 
 permissions:
@@ -18,43 +16,18 @@ permissions:
 
 jobs:
   install:
-    name: Install (${{ matrix.os }})
-    runs-on: ${{ matrix.os }}
-    strategy:
-      fail-fast: false
-      matrix:
-        os: [ubuntu-latest, windows-latest, macos-latest]
+    name: Install (Linux)
+    runs-on: ubuntu-latest
 
     steps:
       - uses: actions/checkout@v4
 
-      - name: Run install script (Linux/macOS)
-        if: runner.os != 'Windows'
+      - name: Run install script
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: bash scripts/install.sh
 
-      - name: Run install script (Windows)
-        if: runner.os == 'Windows'
-        shell: powershell
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: ./scripts/install.ps1
-
-      - name: Verify install (Linux)
-        if: runner.os == 'Linux'
+      - name: Verify install
         run: |
           dpkg-query -W seb-linux
           test -x "/opt/Safe Exam Browser/seb-linux"
-
-      - name: Verify install (macOS)
-        if: runner.os == 'macOS'
-        run: |
-          test -d "/Applications/Safe Exam Browser.app" \
-            || test -d "$HOME/Applications/Safe Exam Browser.app"
-
-      - name: Verify install (Windows)
-        if: runner.os == 'Windows'
-        shell: powershell
-        run: |
-          if (-not (Test-Path "$env:LOCALAPPDATA\NSEB\NSEB.exe")) { exit 1 }

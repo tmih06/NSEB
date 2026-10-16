@@ -30,6 +30,14 @@ const pendingInstructionConfirms = [];
 
 const SEB_REQUEST_HASH = "X-SafeExamBrowser-RequestHash";
 const SEB_CONFIG_KEY_HASH = "X-SafeExamBrowser-ConfigKeyHash";
+
+// Windows client spoof: exam servers allow-list SEB by OS/version and read the
+// browser UA; Linux clients get rejected. Values must match the SEB build the
+// institution expects.
+const SPOOF_UA =
+  "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140.0.0.0 Safari/537.36 SEB/3.6.0.517";
+const SPOOF_OS_NAME = "Windows 10 Pro";
+const SPOOF_SEB_VERSION = "3.6.0.517";
 const ENCRYPTED_SEB_PREFIXES = configParser.ENCRYPTED_BLOCK_PREFIXES;
 const SHELL_HTML_PATH = path.join(__dirname, "shell.html");
 const SHELL_TOOLBAR_HEIGHT = 42;
@@ -58,9 +66,10 @@ function installSebHeaders(webContents) {
         const ck = sebSession.getHeaderConfigKeyHash(url);
         if (rh) details.requestHeaders[SEB_REQUEST_HASH] = rh;
         if (ck) details.requestHeaders[SEB_CONFIG_KEY_HASH] = ck;
-        if (sebSession.userAgent) {
-          details.requestHeaders["User-Agent"] = sebSession.userAgent;
-        }
+        // Config-provided UA wins; spoofed Windows UA is the fallback.
+        details.requestHeaders["User-Agent"] =
+          (sebSession && sebSession.userAgent) || SPOOF_UA;
+        details.requestHeaders["Sec-CH-UA-Platform"] = '"Windows"';
       }
       callback({ requestHeaders: details.requestHeaders });
     },
@@ -205,6 +214,11 @@ function ensureExamView() {
   });
 
   installSebHeaders(examView.webContents);
+  // setUserAgent also fixes navigator.userAgent inside the page, which the
+  // header rewrite in installSebHeaders cannot reach.
+  examView.webContents.setUserAgent(
+    (appState.getSession() && appState.getSession().userAgent) || SPOOF_UA,
+  );
   wireExamViewEvents(examView.webContents);
 
   if (mainWindow && !mainWindow.isDestroyed()) {
@@ -493,9 +507,10 @@ async function bootstrapServerSession(initialSession) {
     clientSecret: serverConfig.clientSecret,
     discoveryEndpoint: serverConfig.apiDiscovery,
     pingInterval: serverConfig.pingInterval,
-    sebVersion: serverInfo.sebVersion,
-    osName: serverInfo.osName,
+    sebVersion: SPOOF_SEB_VERSION,
+    osName: SPOOF_OS_NAME,
     machineName: serverInfo.machineName,
+    userAgent: initialSession.userAgent || SPOOF_UA,
   });
 
   let result = await client.connect();

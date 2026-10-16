@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
 # NSEB installer for Linux and macOS.
-# Usage: curl -fsSL https://raw.githubusercontent.com/tmih06/NSEB/main/scripts/install.sh | bash
+# Usage: curl -fsSL https://raw.githubusercontent.com/Svaerd/NSEB/main/scripts/install.sh | bash
 
 set -euo pipefail
 
-REPO="tmih06/NSEB"
+REPO="Svaerd/NSEB"
 API_URL="https://api.github.com/repos/${REPO}/releases/latest"
 APP_NAME="Safe Exam Browser"
 

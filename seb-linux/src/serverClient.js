@@ -7,13 +7,15 @@ class SebServerClient {
     this.serverUrl = serverUrl.replace(/\/$/, "");
     this.institution = options?.institution || "";
     this.sebVersion = options?.sebVersion || "0.1.0-linux";
-    this.osName = options?.osName || (os.platform() + " " + os.release());
+    this.osName = options?.osName || os.platform() + " " + os.release();
+    this.userAgent = options?.userAgent || null;
     this.machineName = options?.machineName || os.hostname();
     this.clientUserId = options?.clientUserId || safeUserName();
     this.examId = options?.examId || "";
     this.oauthClientName = options?.clientName || "";
     this.oauthClientSecret = options?.clientSecret || "";
-    this.discoveryEndpoint = options?.discoveryEndpoint || "/exam-api/discovery";
+    this.discoveryEndpoint =
+      options?.discoveryEndpoint || "/exam-api/discovery";
     this.pingInterval = options?.pingInterval || 1000;
     this.browserExamKey = options?.browserExamKey || "";
     this.configKey = options?.configKey || "";
@@ -36,8 +38,10 @@ class SebServerClient {
         path: u.pathname + u.search,
         method: opts.method || "GET",
         headers: {
-          "Content-Type": opts.contentType || "application/x-www-form-urlencoded",
+          "Content-Type":
+            opts.contentType || "application/x-www-form-urlencoded",
           Accept: "application/json, */*",
+          ...(this.userAgent ? { "User-Agent": this.userAgent } : {}),
           ...opts.headers,
         },
       };
@@ -61,7 +65,10 @@ class SebServerClient {
       });
 
       req.on("error", reject);
-      req.setTimeout(30000, () => { req.destroy(); reject(new Error("Request timeout")); });
+      req.setTimeout(30000, () => {
+        req.destroy();
+        reject(new Error("Request timeout"));
+      });
 
       if (opts.body) req.write(opts.body);
       req.end();
@@ -89,10 +96,15 @@ class SebServerClient {
         return { success: false, error: "Failed to parse API response" };
       }
 
-      const apiVersions = this.api["api-versions"] || this.api.api_versions || [];
-      const version = apiVersions.find((entry) => entry.name === "v1") || apiVersions[0];
+      const apiVersions =
+        this.api["api-versions"] || this.api.api_versions || [];
+      const version =
+        apiVersions.find((entry) => entry.name === "v1") || apiVersions[0];
       if (!version || !Array.isArray(version.endpoints)) {
-        return { success: false, error: "Exam API discovery response is missing endpoints" };
+        return {
+          success: false,
+          error: "Exam API discovery response is missing endpoints",
+        };
       }
 
       this.endpoints = {};
@@ -102,8 +114,14 @@ class SebServerClient {
         }
       }
 
-      if (!this.getEndpoint("access-token-endpoint") || !this.getEndpoint("seb-handshake-endpoint")) {
-        return { success: false, error: "Exam API discovery is missing required endpoints" };
+      if (
+        !this.getEndpoint("access-token-endpoint") ||
+        !this.getEndpoint("seb-handshake-endpoint")
+      ) {
+        return {
+          success: false,
+          error: "Exam API discovery is missing required endpoints",
+        };
       }
 
       return { success: true };
@@ -137,18 +155,28 @@ class SebServerClient {
       });
 
       if (res.status >= 400) {
-        return { success: false, error: `Access token request failed: ${res.status}`, body: res.body };
+        return {
+          success: false,
+          error: `Access token request failed: ${res.status}`,
+          body: res.body,
+        };
       }
 
       let tokenResponse;
       try {
         tokenResponse = JSON.parse(res.body);
       } catch (e) {
-        return { success: false, error: "Failed to parse access token response" };
+        return {
+          success: false,
+          error: "Failed to parse access token response",
+        };
       }
 
       if (!tokenResponse.access_token) {
-        return { success: false, error: "Access token response did not contain an access token" };
+        return {
+          success: false,
+          error: "Access token response did not contain an access token",
+        };
       }
 
       this.oauth2Token = tokenResponse.access_token;
@@ -181,7 +209,11 @@ class SebServerClient {
       });
 
       if (res.status >= 400) {
-        return { success: false, error: `Handshake failed: ${res.status}`, body: res.body };
+        return {
+          success: false,
+          error: `Handshake failed: ${res.status}`,
+          body: res.body,
+        };
       }
 
       const connToken = res.headers["sebconnectiontoken"]?.toLowerCase();
@@ -247,8 +279,10 @@ class SebServerClient {
 
     const params = [];
     if (examId) params.push(`examId=${encodeURIComponent(examId)}`);
-    if (userSessionId) params.push(`seb_user_session_id=${encodeURIComponent(userSessionId)}`);
-    if (appSignatureKey) params.push(`seb_signature_key=${encodeURIComponent(appSignatureKey)}`);
+    if (userSessionId)
+      params.push(`seb_user_session_id=${encodeURIComponent(userSessionId)}`);
+    if (appSignatureKey)
+      params.push(`seb_signature_key=${encodeURIComponent(appSignatureKey)}`);
 
     try {
       const res = await this.fetch(this.resolveUrl(endpoint), {
@@ -261,10 +295,15 @@ class SebServerClient {
       });
 
       if (res.status >= 400) {
-        return { success: false, error: `Establish connection failed: ${res.status}`, body: res.body };
+        return {
+          success: false,
+          error: `Establish connection failed: ${res.status}`,
+          body: res.body,
+        };
       }
 
-      this.appSignatureKeySalt = res.headers["sebexamsalt"] || this.appSignatureKeySalt;
+      this.appSignatureKeySalt =
+        res.headers["sebexamsalt"] || this.appSignatureKeySalt;
       if (res.headers["sebserverbek"]) {
         this.serverBrowserExamKey = res.headers["sebserverbek"];
       }
@@ -297,7 +336,11 @@ class SebServerClient {
       });
 
       if (res.status >= 400) {
-        return { success: false, error: `Exam config download failed: ${res.status}`, body: res.body };
+        return {
+          success: false,
+          error: `Exam config download failed: ${res.status}`,
+          body: res.body,
+        };
       }
 
       return { success: true, configBuffer: res.bodyBuffer };
@@ -329,7 +372,11 @@ class SebServerClient {
       });
 
       if (res.status >= 400) {
-        return { success: false, error: `Ping failed: ${res.status}`, body: res.body };
+        return {
+          success: false,
+          error: `Ping failed: ${res.status}`,
+          body: res.body,
+        };
       }
 
       let instruction = null;
@@ -349,7 +396,8 @@ class SebServerClient {
 
   async disconnect() {
     const endpoint = this.getEndpoint("seb-handshake-endpoint");
-    if (!this.connectionToken || !endpoint || !this.oauth2Token) return { success: true };
+    if (!this.connectionToken || !endpoint || !this.oauth2Token)
+      return { success: true };
 
     try {
       const url = this.resolveUrl(endpoint);

@@ -10,12 +10,8 @@ permissions:
 
 jobs:
   build:
-    name: Build (${{ matrix.os }})
-    runs-on: ${{ matrix.os }}
-    strategy:
-      fail-fast: false
-      matrix:
-        os: [ubuntu-latest, windows-latest, macos-latest]
+    name: Build (Linux)
+    runs-on: ubuntu-latest
 
     steps:
       - uses: actions/checkout@v4
@@ -24,33 +20,32 @@ jobs:
         with:
           node-version: '20'
 
-      - name: Sync version from tag
+      # Tags may carry a non-semver version (e.g. v0.1.3.1). package.json only
+      # accepts semver, so store the first three parts there and keep the full
+      # tag as the artifact label.
+      - name: Set version from tag
         working-directory: seb-linux
-        run: node -e "const tag='${{ github.ref_name }}'.split('/').pop().replace(/^v/,'');require('child_process').execSync('npm version '+tag+' --no-git-tag-version --allow-same-version',{stdio:'inherit'})"
+        env:
+          TAG: ${{ github.ref_name }}
+        run: |
+          node -e "const fs=require('fs');const t=process.env.TAG.replace(/^v/,'');const p=JSON.parse(fs.readFileSync('package.json','utf8'));p.version=t.split('.').slice(0,3).join('.');fs.writeFileSync('package.json',JSON.stringify(p,null,2)+'\n');console.log('version='+p.version+' label='+t)"
 
       - name: Install dependencies
         working-directory: seb-linux
         run: npm ci
 
       - name: Build (Linux)
-        if: runner.os == 'Linux'
         working-directory: seb-linux
-        run: npx electron-builder --linux --publish=never
-
-      - name: Build (Windows)
-        if: runner.os == 'Windows'
-        working-directory: seb-linux
-        run: npx electron-builder --win --publish=never
-
-      - name: Build (macOS)
-        if: runner.os == 'macOS'
-        working-directory: seb-linux
-        run: npx electron-builder --mac --publish=never
+        env:
+          LABEL: ${{ github.ref_name }}
+        run: |
+          npx electron-builder --linux --publish=never \
+            -c.artifactName="NSEB-v${LABEL#v}.\${ext}"
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: dist-${{ matrix.os }}
+          name: dist-linux
           path: seb-linux/dist/*
 
   release:
@@ -72,44 +67,19 @@ jobs:
           files: dist/*
 
   verify-install:
-    name: Verify Install (${{ matrix.os }})
-    runs-on: ${{ matrix.os }}
+    name: Verify Install (Linux)
+    runs-on: ubuntu-latest
     needs: release
-    strategy:
-      fail-fast: false
-      matrix:
-        os: [ubuntu-latest, windows-latest, macos-latest]
 
     steps:
       - uses: actions/checkout@v4
 
-      - name: Run install script (Linux/macOS)
-        if: runner.os != 'Windows'
+      - name: Run install script
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: bash scripts/install.sh
 
-      - name: Run install script (Windows)
-        if: runner.os == 'Windows'
-        shell: powershell
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: ./scripts/install.ps1
-
-      - name: Verify install (Linux)
-        if: runner.os == 'Linux'
+      - name: Verify install
         run: |
           dpkg-query -W seb-linux
           test -x "/opt/Safe Exam Browser/seb-linux"
-
-      - name: Verify install (macOS)
-        if: runner.os == 'macOS'
-        run: |
-          test -d "/Applications/Safe Exam Browser.app" \
-            || test -d "$HOME/Applications/Safe Exam Browser.app"
-
-      - name: Verify install (Windows)
-        if: runner.os == 'Windows'
-        shell: powershell
-        run: |
-          if (-not (Test-Path "$env:LOCALAPPDATA\NSEB\NSEB.exe")) { exit 1 }
